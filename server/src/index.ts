@@ -1,42 +1,50 @@
 import "dotenv/config";
-import fastify from "fastify";
-import cors from "@fastify/cors";
-import helmet from "@fastify/helmet";
-import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
+import express, { Request, Response } from "express";
+import cors from "cors";
+import helmet from "helmet";
+import swaggerUi from "swagger-ui-express";
+import swaggerJsdoc from "swagger-jsdoc";
 import { PrismaClient } from "@prisma/client";
 
-const app = fastify({ logger: true });
+const app = express();
 const prisma = new PrismaClient();
 
-async function main() {
-  await app.register(cors);
-  await app.register(helmet);
-  await app.register(swagger, {
-    openapi: {
-      info: { title: "SAP Sim API", version: "0.1.0" },
-    },
-  });
-  await app.register(swaggerUi, { routePrefix: "/docs" });
+app.use(express.json());
+app.use(cors());
+app.use(helmet());
 
-  app.get("/health", async () => ({ status: "ok" }));
+const swaggerSpec = swaggerJsdoc({
+  definition: {
+    openapi: "3.0.0",
+    info: { title: "SAP Sim API", version: "0.1.0" },
+  },
+  apis: [],
+});
 
-  // placeholder routes: list counts for quick sanity
-  app.get("/stats", async () => {
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+app.get("/health", (_req: Request, res: Response) => {
+  res.json({ status: "ok" });
+});
+
+// placeholder routes: list counts for quick sanity
+app.get("/stats", async (_req: Request, res: Response) => {
+  try {
     const [mara, vbak, vbap, kna1] = await Promise.all([
       prisma.mARA.count().catch(() => 0),
       prisma.vBAK.count().catch(() => 0),
       prisma.vBAP.count().catch(() => 0),
       prisma.kNA1.count().catch(() => 0),
     ]);
-    return { mara, vbak, vbap, kna1 };
-  });
+    res.json({ mara, vbak, vbap, kna1 });
+  } catch (err) {
+    res.status(500).json({ error: "internal_error" });
+  }
+});
 
-  const port = Number(process.env.PORT || 3001);
-  await app.listen({ host: "0.0.0.0", port });
-}
-
-main().catch((err) => {
-  app.log.error(err);
-  process.exit(1);
+const port = Number(process.env.PORT || 3001);
+app.listen(port, "0.0.0.0", () => {
+  // basic startup log
+  // eslint-disable-next-line no-console
+  console.log(`HTTP server listening on ${port}`);
 });
