@@ -1,0 +1,339 @@
+{
+  "tables": [
+    {
+      "tableName": "MARA",
+      "fields": [
+        {
+          "name": "MATNR",
+          "type": "VARCHAR(18)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": false
+        },
+        {
+          "name": "MTART",
+          "type": "CHAR(4)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "MATKL",
+          "type": "VARCHAR(9)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "MEINS",
+          "type": "CHAR(3)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "LAEDA",
+          "type": "DATE",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "sampleData": [
+        {
+          "MATNR": "000000000000100000",
+          "MTART": "HALB",
+          "MATKL": "UBHIOE",
+          "MEINS": "KG ",
+          "LAEDA": "2025-08-07T00:00:00.000Z"
+        },
+        {
+          "MATNR": "000000000000100001",
+          "MTART": "HALB",
+          "MATKL": "FR3AWXF",
+          "MEINS": "LTR",
+          "LAEDA": "2025-07-24T00:00:00.000Z"
+        },
+        {
+          "MATNR": "000000000000100002",
+          "MTART": "ROH ",
+          "MATKL": "JZOF0WN",
+          "MEINS": "KG ",
+          "LAEDA": "2025-06-03T00:00:00.000Z"
+        },
+        {
+          "MATNR": "000000000000100003",
+          "MTART": "FERT",
+          "MATKL": "9JSSA",
+          "MEINS": "LTR",
+          "LAEDA": "2025-10-13T00:00:00.000Z"
+        },
+        {
+          "MATNR": "000000000000100004",
+          "MTART": "FERT",
+          "MATKL": "RDMQENFD1",
+          "MEINS": "EA ",
+          "LAEDA": "2025-07-13T00:00:00.000Z"
+        }
+      ],
+      "recordCount": 5000
+    },
+    {
+      "tableName": "KNA1",
+      "fields": [
+        {
+          "name": "KUNNR",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": false
+        },
+        {
+          "name": "LAND1",
+          "type": "CHAR(2)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ORT01",
+          "type": "VARCHAR(25)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "NAME1",
+          "type": "VARCHAR(35)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "REGIO",
+          "type": "VARCHAR(3)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "sampleData": [
+        {
+          "KUNNR": "0000500000",
+          "LAND1": "UZ",
+          "ORT01": "Tremblayworth",
+          "NAME1": "Berge, Stiedemann and Wisozk",
+          "REGIO": "DE"
+        },
+        {
+          "KUNNR": "0000500001",
+          "LAND1": "JM",
+          "ORT01": "New Nella",
+          "NAME1": "Witting - King",
+          "REGIO": "NH"
+        },
+        {
+          "KUNNR": "0000500002",
+          "LAND1": "US",
+          "ORT01": "Dickinsonstead",
+          "NAME1": "Schmeler, Fisher and Kemmer",
+          "REGIO": "NH"
+        },
+        {
+          "KUNNR": "0000500003",
+          "LAND1": "BV",
+          "ORT01": "Fort Buckmouth",
+          "NAME1": "McCullough Inc",
+          "REGIO": "CT"
+        },
+        {
+          "KUNNR": "0000500004",
+          "LAND1": "BE",
+          "ORT01": "La Mirada",
+          "NAME1": "O'Keefe - Vandervort",
+          "REGIO": "KY"
+        }
+      ],
+      "recordCount": 2000
+    },
+    {
+      "tableName": "VBAK",
+      "fields": [
+        {
+          "name": "VBELN",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": false
+        },
+        {
+          "name": "AUART",
+          "type": "CHAR(4)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ERDAT",
+          "type": "DATE",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "KUNNR",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "referencedTable": "KNA1",
+          "referencedField": "KUNNR"
+        },
+        {
+          "name": "VKORG",
+          "type": "VARCHAR(4)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "sampleData": [
+        {
+          "VBELN": "0000900000",
+          "AUART": "OR  ",
+          "ERDAT": "2025-05-25T00:00:00.000Z",
+          "KUNNR": "0000500835",
+          "VKORG": "3000"
+        },
+        {
+          "VBELN": "0000900001",
+          "AUART": "OR  ",
+          "ERDAT": "2024-12-13T00:00:00.000Z",
+          "KUNNR": "0000500841",
+          "VKORG": "1000"
+        },
+        {
+          "VBELN": "0000900002",
+          "AUART": "OR  ",
+          "ERDAT": "2025-04-22T00:00:00.000Z",
+          "KUNNR": "0000501591",
+          "VKORG": "1000"
+        },
+        {
+          "VBELN": "0000900003",
+          "AUART": "KE  ",
+          "ERDAT": "2025-05-03T00:00:00.000Z",
+          "KUNNR": "0000500377",
+          "VKORG": "2000"
+        },
+        {
+          "VBELN": "0000900004",
+          "AUART": "RE  ",
+          "ERDAT": "2025-06-10T00:00:00.000Z",
+          "KUNNR": "0000500920",
+          "VKORG": "3000"
+        }
+      ],
+      "recordCount": 10000
+    },
+    {
+      "tableName": "VBAP",
+      "fields": [
+        {
+          "name": "VBELN",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": true,
+          "referencedTable": "VBAK",
+          "referencedField": "VBELN"
+        },
+        {
+          "name": "POSNR",
+          "type": "VARCHAR(6)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": false
+        },
+        {
+          "name": "MATNR",
+          "type": "VARCHAR(18)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "referencedTable": "MARA",
+          "referencedField": "MATNR"
+        },
+        {
+          "name": "KWMENG",
+          "type": "DECIMAL(15,3)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "WERKS",
+          "type": "VARCHAR(4)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ERDAT",
+          "type": "DATE",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "sampleData": [
+        {
+          "VBELN": "0000900000",
+          "POSNR": "000001",
+          "MATNR": "000000000000100475",
+          "KWMENG": "53.279",
+          "WERKS": "1100",
+          "ERDAT": "2025-05-25T00:00:00.000Z"
+        },
+        {
+          "VBELN": "0000900000",
+          "POSNR": "000002",
+          "MATNR": "000000000000100295",
+          "KWMENG": "56.696",
+          "WERKS": "1000",
+          "ERDAT": "2025-05-25T00:00:00.000Z"
+        },
+        {
+          "VBELN": "0000900000",
+          "POSNR": "000003",
+          "MATNR": "000000000000101958",
+          "KWMENG": "79.796",
+          "WERKS": "1200",
+          "ERDAT": "2025-05-25T00:00:00.000Z"
+        },
+        {
+          "VBELN": "0000900001",
+          "POSNR": "000001",
+          "MATNR": "000000000000104644",
+          "KWMENG": "15.882",
+          "WERKS": "2000",
+          "ERDAT": "2024-12-13T00:00:00.000Z"
+        },
+        {
+          "VBELN": "0000900001",
+          "POSNR": "000002",
+          "MATNR": "000000000000100406",
+          "KWMENG": "6.501",
+          "WERKS": "1200",
+          "ERDAT": "2024-12-13T00:00:00.000Z"
+        }
+      ],
+      "recordCount": 38107
+    }
+  ],
+  "extractedAt": "2025-10-24T23:19:25.328Z",
+  "metadata": {
+    "totalTables": 4,
+    "totalRecords": 55107
+  }
+}

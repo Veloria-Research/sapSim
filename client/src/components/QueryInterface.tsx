@@ -25,11 +25,13 @@ interface QueryResult {
   sql: string
   confidence: number
   explanation: string
+  businessLogic: string
   tablesUsed: string[]
   joinTypes: string[]
   complexity: 'simple' | 'medium' | 'complex'
   validationStatus: 'valid' | 'warning' | 'error'
   validationErrors: string[]
+  warnings?: string[]
 }
 
 interface ExecutionResult {
@@ -68,13 +70,14 @@ export function QueryInterface() {
 
   // Load query history and templates on component mount
   useEffect(() => {
-    loadHistory()
-    loadTemplates()
+    // TODO: Implement history and templates endpoints
+    // loadHistory()
+    // loadTemplates()
   }, [])
 
   const loadHistory = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/query/history')
+      const response = await fetch('http://localhost:3001/api/sap-query/history')
       if (response.ok) {
         const data = await response.json()
         setHistory(data.data)
@@ -86,7 +89,7 @@ export function QueryInterface() {
 
   const loadTemplates = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/query/templates')
+      const response = await fetch('http://localhost:3001/api/sap-query/templates')
       if (response.ok) {
         const data = await response.json()
         setTemplates(data.data)
@@ -105,12 +108,15 @@ export function QueryInterface() {
     setExecutionResult(null)
 
     try {
-      const response = await fetch('http://localhost:3001/api/query/generate', {
+      const response = await fetch('http://localhost:3001/api/sap-query/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          prompt,
+          includeExplanation: true
+        }),
       })
 
       if (!response.ok) {
@@ -134,7 +140,7 @@ export function QueryInterface() {
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:3001/api/query/execute', {
+      const response = await fetch('http://localhost:3001/api/sap-query/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,6 +157,44 @@ export function QueryInterface() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to execute query')
     } finally {
+      setIsExecuting(false)
+    }
+  }
+
+  const generateAndExecute = async () => {
+    if (!prompt.trim()) return
+
+    setIsGenerating(true)
+    setIsExecuting(true)
+    setError(null)
+    setQueryResult(null)
+    setExecutionResult(null)
+
+    try {
+      const response = await fetch('http://localhost:3001/api/sap-query/generate-and-execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt,
+          limit: 10,
+          includeExplanation: true
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setQueryResult(data.data.query)
+      setExecutionResult(data.data.execution)
+      loadHistory() // Refresh history
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate and execute query')
+    } finally {
+      setIsGenerating(false)
       setIsExecuting(false)
     }
   }
@@ -205,9 +249,27 @@ export function QueryInterface() {
           
           <div className="flex gap-2">
             <Button 
+              onClick={generateAndExecute} 
+              disabled={isGenerating || isExecuting || !prompt.trim()}
+              className="flex-1"
+            >
+              {(isGenerating || isExecuting) ? (
+                <>
+                  <Spinner className="mr-2 h-4 w-4" />
+                  {isGenerating ? 'Generating...' : 'Executing...'}
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Generate & Execute
+                </>
+              )}
+            </Button>
+            
+            <Button 
               onClick={generateQuery} 
               disabled={isGenerating || !prompt.trim()}
-              className="flex-1"
+              variant="outline"
             >
               {isGenerating ? (
                 <>
@@ -217,7 +279,7 @@ export function QueryInterface() {
               ) : (
                 <>
                   <Code className="mr-2 h-4 w-4" />
-                  Generate SQL
+                  Generate Only
                 </>
               )}
             </Button>
@@ -314,6 +376,29 @@ export function QueryInterface() {
                 <p className="text-sm text-gray-700">{queryResult.explanation}</p>
               </div>
             </div>
+
+            {/* Business Logic */}
+            {queryResult.businessLogic && (
+              <div>
+                <h4 className="font-medium mb-2">Business Logic:</h4>
+                <p className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">{queryResult.businessLogic}</p>
+              </div>
+            )}
+
+            {/* Warnings */}
+            {queryResult.warnings && queryResult.warnings.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Warnings:</h4>
+                <div className="space-y-1">
+                  {queryResult.warnings.map((warning, idx) => (
+                    <Alert key={idx} variant="default">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">{warning}</AlertDescription>
+                    </Alert>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Validation Errors/Warnings */}
             {queryResult.validationErrors.length > 0 && (

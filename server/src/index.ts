@@ -7,6 +7,7 @@ import swaggerJsdoc from "swagger-jsdoc";
 import { PrismaClient } from "@prisma/client";
 import aiRoutes from "./routes/ai.js";
 import queryRoutes from "./routes/query.js";
+import sapQueryRoutes from "./routes/sapQuery.js";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -34,6 +35,7 @@ app.use("/api/ai", aiRoutes);
 
 // Query Routes
 app.use("/api/query", queryRoutes);
+app.use("/api/sap-query", sapQueryRoutes);
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });

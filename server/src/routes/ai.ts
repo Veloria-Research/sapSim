@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { ExtractorService } from "../services/extractor.js";
 import { SchemaSummarizerAgent } from "../services/schemaSummarizer.js";
 import { GroundTruthBuilder } from "../services/groundTruthBuilder.js";
+import { SAPQueryGenerator } from "../services/sapQueryGenerator.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -11,6 +12,7 @@ const prisma = new PrismaClient();
 const extractorService = new ExtractorService(prisma);
 const schemaSummarizerAgent = new SchemaSummarizerAgent(prisma);
 const groundTruthBuilder = new GroundTruthBuilder(prisma);
+const sapQueryGenerator = new SAPQueryGenerator(prisma);
 
 /**
  * @swagger
@@ -293,6 +295,60 @@ router.post("/process-all", async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: "Failed to execute AI pipeline",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/ai/generate-query:
+ *   post:
+ *     summary: Generate SAP SQL query from natural language prompt
+ *     tags: [AI Agents]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               prompt:
+ *                 type: string
+ *                 description: Natural language description of the query
+ *               maxTables:
+ *                 type: number
+ *                 description: Maximum number of tables to include
+ *               includeExplanation:
+ *                 type: boolean
+ *                 description: Whether to include explanation
+ *               preferredJoinType:
+ *                 type: string
+ *                 enum: [inner, left, right, full]
+ *                 description: Preferred join type
+ *               businessContext:
+ *                 type: string
+ *                 description: Business context for the query
+ *     responses:
+ *       200:
+ *         description: Successfully generated SQL query
+ */
+router.post("/generate-query", async (req: Request, res: Response) => {
+  try {
+    console.log("Generating SAP query for prompt:", req.body.prompt);
+    
+    const result = await sapQueryGenerator.generateSAPQuery(req.body);
+    
+    res.json({
+      success: true,
+      data: result,
+      message: "SAP query generated successfully"
+    });
+  } catch (error) {
+    console.error("Query generation error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to generate SAP query",
       details: error instanceof Error ? error.message : "Unknown error"
     });
   }

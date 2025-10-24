@@ -27,6 +27,7 @@ model MARA {
 
   VBAP    VBAP[]   @relation("VBAP_MARA_MATNR")
 
+
   @@map("MARA")
 }
 
@@ -39,6 +40,7 @@ model KNA1 {
   REGIO String? @db.VarChar(3)
 
   VBAK  VBAK[]
+
 
   @@map("KNA1")
 }
