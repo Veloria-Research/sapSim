@@ -529,12 +529,12 @@ Respond in JSON format:
         leftColumn: rel.leftColumn,
         rightTable: rel.rightTable,
         rightColumn: rel.rightColumn,
-        relationshipType: rel.relationshipType as 'one_to_one' | 'one_to_many' | 'many_to_many',
+        relationshipType: 'one_to_many' as 'one_to_one' | 'one_to_many' | 'many_to_many', // Default since schema doesn't store this
         joinType: rel.joinType as 'inner' | 'left' | 'right' | 'full',
         confidence: rel.confidence,
-        inferenceMethod: rel.inferenceMethod as 'column_name' | 'data_pattern' | 'business_logic' | 'ai_analysis',
-        businessRules: rel.businessRules || undefined,
-        evidence: rel.evidence || []
+        inferenceMethod: 'business_logic' as 'column_name' | 'data_pattern' | 'business_logic' | 'ai_analysis', // Default
+        businessRules: rel.businessRule || undefined,
+        evidence: rel.businessRule ? [rel.businessRule] : []
       }));
     } catch (error) {
       console.error('Error getting relationships for tables:', error);
@@ -561,7 +561,7 @@ Respond in JSON format:
       let totalConfidence = 0;
       
       for (const rel of relationships) {
-        byMethod[rel.inferenceMethod] = (byMethod[rel.inferenceMethod] || 0) + 1;
+        byMethod[rel.relationshipType] = (byMethod[rel.relationshipType] || 0) + 1;
         totalConfidence += rel.confidence;
         
         if (rel.confidence > 0.8) byConfidence['high (>0.8)']++;
