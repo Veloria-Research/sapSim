@@ -1,11 +1,68 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import "dotenv/config";
+import { PrismaClient } from "@prisma/client";
 import { faker } from "@faker-js/faker";
+import fs from "fs";
+import path from "path";
+import zlib from "zlib";
+import { parse } from "csv-parse";
 
 const prisma = new PrismaClient();
 
 type Scale = "tiny" | "small" | "medium" | "large";
 
 const scale: Scale = (process.env.SEED_SCALE as Scale) || "small";
+const source: "synthetic" | "static" =
+  (process.env.SEED_SOURCE as any) || "synthetic";
+const dataDir =
+  process.env.SEED_DATA_DIR || path.resolve(process.cwd(), "data");
+
+async function ingestCsv<T>(
+  fileBase: string,
+  mapRow: (r: Record<string, string>) => T | null,
+  insert: (batch: T[]) => Promise<unknown>,
+  batchSize = 2000
+) {
+  const csvPath = fs.existsSync(path.join(dataDir, `${fileBase}.csv`))
+    ? path.join(dataDir, `${fileBase}.csv`)
+    : fs.existsSync(path.join(dataDir, `${fileBase}.csv.gz`))
+      ? path.join(dataDir, `${fileBase}.csv.gz`)
+      : null;
+  if (!csvPath)
+    throw new Error(`Static file not found for ${fileBase} in ${dataDir}`);
+
+  const stream = csvPath.endsWith(".gz")
+    ? fs.createReadStream(csvPath).pipe(zlib.createGunzip())
+    : fs.createReadStream(csvPath);
+
+  const parser = stream.pipe(
+    parse({
+      columns: true,
+      bom: true,
+      skip_empty_lines: true,
+      relax_column_count: true,
+    })
+  );
+
+  let batch: T[] = [];
+  for await (const rec of parser) {
+    const mapped = mapRow(rec as Record<string, string>);
+    if (!mapped) continue;
+    batch.push(mapped);
+    if (batch.length >= batchSize) {
+      await insert(batch);
+      batch = [];
+    }
+  }
+  if (batch.length) await insert(batch);
+}
+
+function asDate(val?: string | null): Date | null {
+  if (!val) return null;
+  const t = val.trim();
+  if (!t) return null;
+  const d = new Date(t);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 const VOLUMES: Record<
   Scale,
@@ -75,7 +132,7 @@ async function seedKNA1() {
           LAND1: faker.location.countryCode("alpha-2"),
           ORT01: faker.location.city(),
           NAME1: faker.company.name().slice(0, 35),
-          REGIO: faker.location.stateAbbr(),
+          REGIO: faker.location.state({ abbreviated: true }),
         };
       }
     );
@@ -93,6 +150,8 @@ async function seedVBAKandVBAP() {
     select: { KUNNR: true },
     take: 50000,
   });
+  const maraIds: string[] = maraKeys.map((m: { MATNR: string }) => m.MATNR);
+  const kna1Ids: string[] = kna1Keys.map((k: { KUNNR: string }) => k.KUNNR);
 
   const batchSize = 1000;
   for (let i = 0; i < vbakCount; i += batchSize) {
@@ -102,8 +161,8 @@ async function seedVBAKandVBAP() {
       return {
         VBELN: genVBELN(idx),
         AUART: randomFrom(AUART),
-        ERDAT: faker.date.recent({ days: 365 }),
-        KUNNR: randomFrom(kna1Keys).KUNNR,
+        ERDAT: faker.date.recent({ days: 365 }) as Date,
+        KUNNR: randomFrom(kna1Ids),
         VKORG: randomFrom(VKORG),
       };
     });
@@ -125,14 +184,14 @@ async function seedVBAKandVBAP() {
         max: cfg.vbapPerVbak[1],
       });
       for (let p = 1; p <= items; p++) {
-        const mat = randomFrom(maraKeys).MATNR;
+        const mat = randomFrom(maraIds);
         vbap.push({
           VBELN: h.VBELN,
           POSNR: String(p).padStart(6, "0"),
           MATNR: mat,
-          KWMENG: new Prisma.Decimal(
-            faker.number.float({ min: 1, max: 100, fractionDigits: 3 })
-          ),
+          KWMENG: faker.number
+            .float({ min: 1, max: 100, fractionDigits: 3 })
+            .toFixed(3),
           WERKS: randomFrom(WERKS),
           ERDAT: h.ERDAT as Date,
         });
@@ -145,9 +204,13 @@ async function seedVBAKandVBAP() {
 
 async function main() {
   console.time("seed");
-  await seedMARA();
-  await seedKNA1();
-  await seedVBAKandVBAP();
+  if (source === "synthetic") {
+    await seedMARA();
+    await seedKNA1();
+    await seedVBAKandVBAP();
+  } else {
+    await seedFromStatic();
+  }
   console.timeEnd("seed");
 }
 
@@ -160,3 +223,58 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
+
+async function seedFromStatic() {
+  // Ingest order respects foreign keys
+  console.log(`Reading static CSVs from ${dataDir}`);
+
+  await ingestCsv(
+    "KNA1",
+    (r) => ({
+      KUNNR: r.KUNNR,
+      LAND1: r.LAND1 || null,
+      ORT01: r.ORT01 || null,
+      NAME1: (r.NAME1 || "").slice(0, 35),
+      REGIO: r.REGIO || null,
+    }),
+    (batch) => prisma.kNA1.createMany({ data: batch, skipDuplicates: true })
+  );
+
+  await ingestCsv(
+    "MARA",
+    (r) => ({
+      MATNR: r.MATNR,
+      MTART: r.MTART || "FERT",
+      MATKL: r.MATKL || null,
+      MEINS: r.MEINS || "EA",
+      LAEDA: asDate(r.LAEDA),
+    }),
+    (batch) => prisma.mARA.createMany({ data: batch, skipDuplicates: true })
+  );
+
+  await ingestCsv(
+    "VBAK",
+    (r) => ({
+      VBELN: r.VBELN,
+      AUART: r.AUART || null,
+      ERDAT: asDate(r.ERDAT),
+      KUNNR: r.KUNNR,
+      VKORG: r.VKORG || null,
+    }),
+    (batch) => prisma.vBAK.createMany({ data: batch, skipDuplicates: true })
+  );
+
+  await ingestCsv(
+    "VBAP",
+    (r) => ({
+      VBELN: r.VBELN,
+      POSNR: r.POSNR?.padStart(6, "0"),
+      MATNR: r.MATNR || null,
+      KWMENG: r.KWMENG ?? null,
+      WERKS: r.WERKS || null,
+      ERDAT: asDate(r.ERDAT),
+    }),
+    (batch) =>
+      prisma.vBAP.createMany({ data: batch as any, skipDuplicates: true })
+  );
+}
