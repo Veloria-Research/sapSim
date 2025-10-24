@@ -6,6 +6,7 @@ import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 import { PrismaClient } from "@prisma/client";
 import aiRoutes from "./routes/ai.js";
+import queryRoutes from "./routes/query.js";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -30,6 +31,9 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // AI Routes
 app.use("/api/ai", aiRoutes);
+
+// Query Routes
+app.use("/api/query", queryRoutes);
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });

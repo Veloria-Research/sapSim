@@ -7,7 +7,8 @@ import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
-import { Database, Brain, Search, FileText, CheckCircle, AlertCircle } from 'lucide-react'
+import { Database, Brain, Search, FileText, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react'
+import { QueryInterface } from './components/QueryInterface'
 import './App.css'
 
 // Types
@@ -172,14 +173,34 @@ function App() {
           </CardContent>
         </Card>
 
+        {/* Query Interface - Always Available */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Natural Language Query Interface
+            </CardTitle>
+            <CardDescription>
+              Generate and execute SQL queries using natural language
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <QueryInterface />
+          </CardContent>
+        </Card>
+
         {/* Results */}
         {processResult && (
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="extraction">Data Extraction</TabsTrigger>
               <TabsTrigger value="schemas">Schema Analysis</TabsTrigger>
               <TabsTrigger value="groundtruth">Ground Truth</TabsTrigger>
+              <TabsTrigger value="query">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Query
+              </TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -508,6 +529,11 @@ function App() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Query Tab */}
+            <TabsContent value="query" className="space-y-6">
+              <QueryInterface />
             </TabsContent>
           </Tabs>
         )}
