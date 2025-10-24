@@ -73,3 +73,31 @@ model VBAP {
   @@index([VBELN])
   @@map("VBAP")
 }
+
+// POC persistence models
+
+model SchemaSummary {
+  id        String   @id @default(cuid())
+  table     String
+  summary   String
+  embedding Bytes?   // optional if pgvector used separately
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GroundTruth {
+  id        String   @id @default(cuid())
+  version   String
+  graph     Json
+  createdAt DateTime @default(now())
+}
+
+model GeneratedQuery {
+  id          String   @id @default(cuid())
+  prompt      String
+  sql         String
+  graphId     String
+  confidence  Float
+  provenance  Json
+  createdAt   DateTime @default(now())
+}
