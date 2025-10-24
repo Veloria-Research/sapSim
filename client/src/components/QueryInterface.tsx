@@ -17,7 +17,8 @@ import {
   Database,
   Code,
   History,
-  Lightbulb
+  Lightbulb,
+  Brain
 } from 'lucide-react'
 
 // Types
@@ -128,6 +129,52 @@ export function QueryInterface() {
       loadHistory() // Refresh history
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate query')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const generateQueryWithAI = async () => {
+    if (!prompt.trim()) return
+
+    setIsGenerating(true)
+    setError(null)
+    setQueryResult(null)
+    setExecutionResult(null)
+
+    try {
+      const response = await fetch('http://localhost:3001/api/ai-pipeline/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt,
+          context: {
+            businessDomain: 'sales',
+            preferredComplexity: 'medium',
+            includeExplanation: true,
+            maxTables: 5,
+            outputFormat: 'both'
+          },
+          metadata: {
+            useGroundTruth: true,
+            useSchemaSummary: true,
+            useTableRelationships: true,
+            useColumnMetadata: true
+          }
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setQueryResult(data.result.query)
+      loadHistory() // Refresh history
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate query with AI pipeline')
     } finally {
       setIsGenerating(false)
     }
@@ -280,6 +327,25 @@ export function QueryInterface() {
                 <>
                   <Code className="mr-2 h-4 w-4" />
                   Generate Only
+                </>
+              )}
+            </Button>
+
+            <Button 
+              onClick={generateQueryWithAI} 
+              disabled={isGenerating || !prompt.trim()}
+              variant="outline"
+              className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 hover:from-blue-100 hover:to-purple-100"
+            >
+              {isGenerating ? (
+                <>
+                  <Spinner className="mr-2 h-4 w-4" />
+                  AI Processing...
+                </>
+              ) : (
+                <>
+                  <Brain className="mr-2 h-4 w-4 text-blue-600" />
+                  AI Pipeline
                 </>
               )}
             </Button>

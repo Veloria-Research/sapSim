@@ -8,6 +8,7 @@ import { PrismaClient } from "@prisma/client";
 import aiRoutes from "./routes/ai.js";
 import queryRoutes from "./routes/query.js";
 import sapQueryRoutes from "./routes/sapQuery.js";
+import aiPipelineRoutes from "./routes/aiPipeline.js";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -36,6 +37,7 @@ app.use("/api/ai", aiRoutes);
 // Query Routes
 app.use("/api/query", queryRoutes);
 app.use("/api/sap-query", sapQueryRoutes);
+app.use("/api/ai-pipeline", aiPipelineRoutes);
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
