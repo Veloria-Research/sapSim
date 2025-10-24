@@ -129,10 +129,10 @@ async function seedKNA1() {
         const idx = i + k;
         return {
           KUNNR: genKUNNR(idx),
-          LAND1: faker.location.countryCode("alpha-2"),
-          ORT01: faker.location.city(),
+          LAND1: faker.location.countryCode("alpha-2").slice(0, 2),
+          ORT01: faker.location.city().slice(0, 25),
           NAME1: faker.company.name().slice(0, 35),
-          REGIO: faker.location.state({ abbreviated: true }),
+          REGIO: faker.location.state({ abbreviated: true }).slice(0, 3),
         };
       }
     );
@@ -232,10 +232,10 @@ async function seedFromStatic() {
     "KNA1",
     (r) => ({
       KUNNR: r.KUNNR,
-      LAND1: r.LAND1 || null,
-      ORT01: r.ORT01 || null,
+      LAND1: (r.LAND1 || null)?.slice(0, 2) || null,
+      ORT01: (r.ORT01 || null)?.slice(0, 25) || null,
       NAME1: (r.NAME1 || "").slice(0, 35),
-      REGIO: r.REGIO || null,
+      REGIO: (r.REGIO || null)?.slice(0, 3) || null,
     }),
     (batch) => prisma.kNA1.createMany({ data: batch, skipDuplicates: true })
   );
