@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-import { QueryGenerator } from "../services/queryGenerator.js";
-import { QueryValidation } from "../services/queryValidation.js";
+import { SAPQueryGenerator } from "../services/sapQueryGenerator.js";
+import { ValidatorAgent } from "../services/validatorAgent.js";
 import { ColumnAnalyzer } from "../services/columnAnalyzer.js";
 import { RelationshipInference } from "../services/relationshipInference.js";
 
@@ -9,8 +9,8 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // Initialize services
-const queryGenerator = new QueryGenerator(prisma);
-const queryValidation = new QueryValidation(prisma);
+const sapQueryGenerator = new SAPQueryGenerator(prisma);
+const validatorAgent = new ValidatorAgent(prisma);
 const columnAnalyzer = new ColumnAnalyzer(prisma);
 const relationshipInference = new RelationshipInference(prisma);
 
@@ -54,7 +54,7 @@ router.post("/generate", async (req: Request, res: Response) => {
 
     console.log(`Generating query for prompt: "${prompt}"`);
     
-    const result = await queryGenerator.generateQuery({
+    const result = await sapQueryGenerator.generateSAPQuery({
       prompt,
       maxTables: context?.maxTables,
       includeExplanation: true,
@@ -112,7 +112,16 @@ router.post("/validate", async (req: Request, res: Response) => {
 
     console.log(`Validating SQL query: ${sql.substring(0, 100)}...`);
     
-    const validationResult = await queryValidation.validateQuery(sql, context);
+    // Get ground truth for validation
+    const groundTruth = await validatorAgent.getGroundTruthForValidation();
+    if (!groundTruth) {
+      return res.status(500).json({
+        success: false,
+        error: "Ground truth data not available for validation"
+      });
+    }
+    
+    const validationResult = await validatorAgent.validateQuery(sql, groundTruth, context?.businessContext);
 
     res.json({
       success: true,
@@ -168,7 +177,7 @@ router.post("/execute", async (req: Request, res: Response) => {
 
     console.log(`Executing SQL query: ${sql.substring(0, 100)}...`);
     
-    const result = await queryGenerator.executeQuery(sql);
+    const result = await sapQueryGenerator.executeQuery(sql);
 
     res.json({
       success: true,
@@ -213,7 +222,21 @@ router.get("/history", async (req: Request, res: Response) => {
 
     console.log(`Retrieving query history (limit: ${limit}, offset: ${offset})`);
     
-    const history = await queryGenerator.getQueryHistory(limit);
+    // Get query history from database directly
+    const history = await prisma.generatedQuery.findMany({
+      take: limit,
+      skip: offset,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        prompt: true,
+        sql: true,
+        confidence: true,
+        complexity: true,
+        validationStatus: true,
+        createdAt: true
+      }
+    });
 
     res.json({
       success: true,
@@ -389,21 +412,26 @@ router.post("/process", async (req: Request, res: Response) => {
     console.log(`Processing complete pipeline for prompt: "${prompt}"`);
     
     // Step 1: Generate query
-    const generatedQuery = await queryGenerator.generateQuery({
+    const generatedQuery = await sapQueryGenerator.generateSAPQuery({
       prompt,
       includeExplanation: true
     });
 
-    // Step 2: Validate query (using empty context since we don't have it from the result)
-    const validationResult = await queryValidation.validateQuery(
-      generatedQuery.sql
-    );
+    // Step 2: Validate query
+    const groundTruth = await validatorAgent.getGroundTruthForValidation();
+    let validationResult = null;
+    if (groundTruth) {
+      validationResult = await validatorAgent.validateQuery(
+        generatedQuery.sql,
+        groundTruth
+      );
+    }
 
     let executionResult = null;
     
     // Step 3: Execute if requested and validation passes
-    if (executeQuery && validationResult.isValid) {
-      executionResult = await queryGenerator.executeQuery(
+    if (executeQuery && validationResult?.isValid) {
+      executionResult = await sapQueryGenerator.executeQuery(
         generatedQuery.sql
       );
     }
