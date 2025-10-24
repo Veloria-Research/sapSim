@@ -334,18 +334,20 @@ export class QueryValidation {
       // Check for client (MANDT) filtering in SAP tables
       const sapTables = context.tables.filter(t => ['KNA1', 'MARA', 'VBAK', 'VBAP'].includes(t));
       if (sapTables.length > 0 && !upperSQL.includes('MANDT')) {
-        warnings.push({
-          type: 'best_practice',
+        errors.push({
+          type: 'business_rule',
           message: 'SAP tables should include client (MANDT) filtering',
+          severity: 'medium',
           suggestion: 'Add WHERE MANDT = \'800\' or appropriate client code'
         });
       }
 
       // Check for proper date filtering
       if (upperSQL.includes('DATE') && !upperSQL.includes('WHERE')) {
-        warnings.push({
-          type: 'best_practice',
+        errors.push({
+          type: 'business_rule',
           message: 'Date columns should typically include range filtering',
+          severity: 'low',
           suggestion: 'Add date range conditions to improve performance'
         });
       }

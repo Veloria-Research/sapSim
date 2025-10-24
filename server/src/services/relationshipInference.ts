@@ -323,7 +323,7 @@ export class RelationshipInference {
 
 ${tables.map(table => `
 Table: ${table.name}
-Columns: ${table.columns.map(col => `${col.name} (${col.type}${col.semanticType ? `, semantic: ${col.semanticType}` : ''})`).join(', ')}
+Columns: ${table.columns.map((col: { name: string; type: string; semanticType?: string }) => `${col.name} (${col.type}${col.semanticType ? `, semantic: ${col.semanticType}` : ''})`).join(', ')}
 `).join('\n')}
 
 Identify potential foreign key relationships based on:
