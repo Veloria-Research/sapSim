@@ -5,6 +5,7 @@ import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 import { PrismaClient } from "@prisma/client";
+import aiRoutes from "./routes/ai.js";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -16,12 +17,19 @@ app.use(helmet());
 const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: "3.0.0",
-    info: { title: "SAP Sim API", version: "0.1.0" },
+    info: { 
+      title: "SAP AI Ground Truth API", 
+      version: "0.1.0",
+      description: "API for SAP AI Query Generation Automation System"
+    },
   },
-  apis: [],
+  apis: ["./src/routes/*.ts"],
 });
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// AI Routes
+app.use("/api/ai", aiRoutes);
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });

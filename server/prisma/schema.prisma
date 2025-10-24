@@ -6,11 +6,13 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
 }
 
 // SAP-like core tables
@@ -77,12 +79,12 @@ model VBAP {
 // POC persistence models
 
 model SchemaSummary {
-  id        String   @id @default(cuid())
-  table     String
+  id        String                     @id @default(cuid())
+  table     String                     @unique
   summary   String
-  embedding Bytes?   // optional if pgvector used separately
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  embedding Unsupported("vector(1536)")?  // OpenAI ada-002 embedding dimension
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
 }
 
 model GroundTruth {
@@ -92,12 +94,95 @@ model GroundTruth {
   createdAt DateTime @default(now())
 }
 
+// Enhanced models for intelligent query generation
+
+model ColumnMetadata {
+  id                String                     @id @default(cuid())
+  tableName         String
+  columnName        String
+  dataType          String
+  isNullable        Boolean
+  isPrimaryKey      Boolean
+  isForeignKey      Boolean
+  referencedTable   String?
+  referencedColumn  String?
+  
+  // Semantic analysis
+  semanticType      String?                    // e.g., "identifier", "name", "date", "amount", "status"
+  businessContext   String?                    // Business meaning of the column
+  description       String?                    // AI-generated description
+  embedding         Unsupported("vector(1536)")?  // Semantic embedding
+  
+  // Sample data analysis
+  sampleValues      Json                       // Array of sample values
+  valuePatterns     Json                       // Detected patterns (formats, ranges, etc.)
+  uniqueValueCount  Int?                       // Number of unique values
+  nullPercentage    Float?                     // Percentage of null values
+  
+  // Relationship hints
+  possibleJoinKeys  Json                       // Potential join relationships
+  semanticSimilarity Json                      // Similar columns in other tables
+  
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  
+  @@unique([tableName, columnName])
+  @@index([tableName])
+  @@index([semanticType])
+}
+
+model TableRelationship {
+  id              String   @id @default(cuid())
+  leftTable       String
+  leftColumn      String
+  rightTable      String
+  rightColumn     String
+  relationshipType String  // "foreign_key", "semantic_match", "inferred"
+  confidence      Float    // 0.0 to 1.0
+  joinType        String   // "inner", "left", "right", "full"
+  businessRule    String?  // Business logic for the relationship
+  createdAt       DateTime @default(now())
+  
+  @@unique([leftTable, leftColumn, rightTable, rightColumn])
+  @@index([leftTable])
+  @@index([rightTable])
+}
+
+model QueryTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  pattern       String   // Natural language pattern
+  sqlTemplate   String   // SQL template with placeholders
+  requiredTables Json    // Array of required tables
+  confidence    Float
+  usageCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([pattern])
+}
+
 model GeneratedQuery {
-  id          String   @id @default(cuid())
-  prompt      String
-  sql         String
-  graphId     String
-  confidence  Float
-  provenance  Json
-  createdAt   DateTime @default(now())
+  id              String   @id @default(cuid())
+  prompt          String
+  sql             String
+  confidence      Float
+  executionTime   Float?   // Query execution time in ms
+  resultCount     Int?     // Number of rows returned
+  
+  // Query analysis
+  tablesUsed      Json     // Array of tables used
+  joinTypes       Json     // Types of joins used
+  complexity      String   // "simple", "medium", "complex"
+  
+  // Provenance and validation
+  templateUsed    String?  // Template ID if used
+  validationStatus String  // "valid", "invalid", "warning"
+  validationErrors Json?   // Validation errors if any
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([createdAt])
+  @@index([confidence])
 }
