@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// SAP-like core tables
+
+model MARA {
+  // Material master basic data
+  MATNR   String  @id @db.VarChar(18)
+  MTART   String  @db.Char(4)
+  MATKL   String? @db.VarChar(9)
+  MEINS   String  @db.Char(3)
+  LAEDA   DateTime? @db.Date
+
+  VBAP    VBAP[]   @relation("VBAP_MARA_MATNR")
+
+  @@map("MARA")
+}
+
+model KNA1 {
+  // Customer master (general)
+  KUNNR String @id @db.VarChar(10)
+  LAND1 String? @db.Char(2)
+  ORT01 String? @db.VarChar(25)
+  NAME1 String  @db.VarChar(35)
+  REGIO String? @db.VarChar(3)
+
+  VBAK  VBAK[]
+
+  @@map("KNA1")
+}
+
+model VBAK {
+  // Sales document: Header data
+  VBELN String  @id @db.VarChar(10)
+  AUART String? @db.Char(4)
+  ERDAT DateTime? @db.Date
+  KUNNR String  @db.VarChar(10)
+  VKORG String? @db.VarChar(4)
+
+  KNA1  KNA1   @relation(fields: [KUNNR], references: [KUNNR])
+  VBAP  VBAP[]
+
+  @@index([KUNNR])
+  @@map("VBAK")
+}
+
+model VBAP {
+  // Sales document: Item data
+  VBELN String  @db.VarChar(10)
+  POSNR String  @db.VarChar(6)
+  MATNR String? @db.VarChar(18)
+  KWMENG Decimal? @db.Decimal(15, 3)
+  WERKS String?  @db.VarChar(4)
+  ERDAT DateTime? @db.Date
+
+  VBAK  VBAK   @relation(fields: [VBELN], references: [VBELN])
+  MARA  MARA?  @relation("VBAP_MARA_MATNR", fields: [MATNR], references: [MATNR])
+
+  @@id([VBELN, POSNR])
+  @@index([MATNR])
+  @@index([VBELN])
+  @@map("VBAP")
+}
