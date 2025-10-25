@@ -69,12 +69,8 @@ export class SAPQueryGenerator {
     VBAP: "VBAP",
     MARA: "MARA",
     KNA1: "KNA1",
-    BKPF: "BKPF",
-    BSEG: "BSEG",
-    EKKO: "EKKO",
-    EKPO: "EKPO",
-    LIKP: "LIKP",
-    LIPS: "LIPS",
+    // Only include tables that exist in the Prisma schema
+    // Removed: BKPF, BSEG, EKKO, EKPO, LIKP, LIPS as they don't exist in the database
   };
 
   constructor(private prisma: PrismaClient) {
@@ -539,6 +535,22 @@ export class SAPQueryGenerator {
       if (kna1) relevantTables.push(kna1);
     }
 
+    // Enhanced logic for customer purchase/amount queries
+    if (
+      prompt.toLowerCase().includes("customer") &&
+      (prompt.toLowerCase().includes("purchase") ||
+       prompt.toLowerCase().includes("amount") ||
+       prompt.toLowerCase().includes("total") ||
+       prompt.toLowerCase().includes("revenue") ||
+       prompt.toLowerCase().includes("value"))
+    ) {
+      // For customer purchase analysis, we need sales data (VBAK/VBAP)
+      const vbak = this.sapTableDefinitions.get("VBAK");
+      const vbap = this.sapTableDefinitions.get("VBAP");
+      if (vbak && !relevantTables.some(t => t.name === "VBAK")) relevantTables.push(vbak);
+      if (vbap && !relevantTables.some(t => t.name === "VBAP")) relevantTables.push(vbap);
+    }
+
     // Define standard SAP relationships
     if (
       relevantTables.some((t) => t.name === "VBAK") &&
@@ -604,15 +616,17 @@ export class SAPQueryGenerator {
     const systemPrompt = `You are an expert SAP consultant and SQL developer. Generate optimized SQL queries for SAP systems.
 
 CRITICAL REQUIREMENTS:
-1. Use EXACT table names as provided (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
-2. Use EXACT column names as provided (case-sensitive) - all column names are UPPERCASE
-3. Table names and column names are CASE-SENSITIVE and must be used EXACTLY as shown
-4. Use proper column aliases with descriptive business names
-5. Follow SAP naming conventions and business logic
-6. Use ${request.preferredJoinType?.toUpperCase() || "INNER"} JOINs unless business logic requires otherwise
-7. Include appropriate WHERE clauses for filtering
-8. Return only valid PostgreSQL-compatible SQL
-9. Do NOT use lowercase table or column names - use the exact case provided
+1. ONLY use tables from this EXACT list (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
+2. NEVER use any other SAP tables (like VBRK, VBRP, etc.) - they do not exist in this system
+3. Use EXACT column names as provided (case-sensitive) - all column names are UPPERCASE
+4. Table names and column names are CASE-SENSITIVE and must be used EXACTLY as shown
+5. Use proper column aliases with descriptive business names
+6. Follow SAP naming conventions and business logic
+7. Use ${request.preferredJoinType?.toUpperCase() || "INNER"} JOINs unless business logic requires otherwise
+8. Include appropriate WHERE clauses for filtering
+9. Return only valid PostgreSQL-compatible SQL
+10. Do NOT use lowercase table or column names - use the exact case provided
+11. If you cannot fulfill the request with the available tables, explain the limitation
 
 Available SAP Tables:
 ${context.tables
@@ -629,22 +643,22 @@ Available Relationships:
 ${context.relationships.map((rel) => `${rel.leftTable}.${rel.leftColumn} = ${rel.rightTable}.${rel.rightColumn} (${rel.joinType} JOIN) - ${rel.businessRule}`).join("\n")}
 
 EXAMPLE SQL STRUCTURE:
-SELECT "vbak"."vbeln"  AS Sales_Document_Number,
-       "vbak"."auart"  AS Sales_Document_Type,
-       "vbak"."erdat"  AS Created_On,
-       "vbap"."matnr"  AS Material_Number,
-       "vbap"."kwmeng" AS Order_Quantity,
-       "mara"."mtart"  AS Material_Type,
-       "mara"."matkl"  AS Material_Group,
-       "kna1"."name1"  AS Customer_Name
-FROM   "vbak"
-       INNER JOIN "vbap"
-               ON "vbak"."vbeln" = "vbap"."vbeln"
-       INNER JOIN "mara"
-               ON "vbap"."matnr" = "mara"."matnr"
-       INNER JOIN "kna1"
-               ON "vbak"."kunnr" = "kna1"."kunnr"
-WHERE  "vbak"."kunnr" = '500000' 
+SELECT "VBAK"."VBELN"  AS Sales_Document_Number,
+       "VBAK"."AUART"  AS Sales_Document_Type,
+       "VBAK"."ERDAT"  AS Created_On,
+       "VBAP"."MATNR"  AS Material_Number,
+       "VBAP"."KWMENG" AS Order_Quantity,
+       "MARA"."MTART"  AS Material_Type,
+       "MARA"."MATKL"  AS Material_Group,
+       "KNA1"."NAME1"  AS Customer_Name
+FROM   "VBAK"
+       INNER JOIN "VBAP"
+               ON "VBAK"."VBELN" = "VBAP"."VBELN"
+       INNER JOIN "MARA"
+               ON "VBAP"."MATNR" = "MARA"."MATNR"
+       INNER JOIN "KNA1"
+               ON "VBAK"."KUNNR" = "KNA1"."KUNNR"
+WHERE  "VBAK"."KUNNR" = '500000' 
 
 SAP Query Best Practices:
 1. Use meaningful column aliases that reflect business terminology
@@ -663,8 +677,13 @@ Return as JSON: {"sql": "...", "confidence": 0.95, "explanation": "...", "busine
 
     const userPrompt = `Business Requirement: ${prompt}
 
+STRICT CONSTRAINTS:
+- ONLY use these tables: ${context.tables.map((t) => t.name).join(", ")}
+- DO NOT use any other SAP tables (VBRK, VBRP, etc.) - they do not exist
+- If the requirement cannot be met with available tables, explain the limitation
+
 Please generate a SQL query that:
-1. Uses the EXACT table names provided (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
+1. Uses ONLY the EXACT table names provided (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
 2. Includes meaningful column aliases using underscores (e.g., Sales_Document_Number)
 3. Implements proper JOIN conditions based on SAP relationships
 4. Follows SAP business logic and conventions
@@ -683,7 +702,7 @@ Return the response in this exact JSON format (and nothing else):
 }`;
 
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -897,8 +916,41 @@ Return the response in this exact JSON format (and nothing else):
       errors.push("Query must start with SELECT");
     }
 
-    // Check for required SAP table references
+    // Check for non-existent tables in the SQL
     const sqlUpper = sql.toUpperCase();
+    const validTables = Object.keys(this.tableNameMapping);
+    const invalidTables = ["VBRK", "VBRP", "BKPF", "BSEG", "EKKO", "EKPO", "LIKP", "LIPS"];
+    
+    invalidTables.forEach(table => {
+      if (sqlUpper.includes(table)) {
+        errors.push(`Invalid tables detected: ${table}`);
+      }
+    });
+
+    // Extract table names from SQL to validate they exist
+    const tableMatches = sql.match(/FROM\s+["`]?(\w+)["`]?|JOIN\s+["`]?(\w+)["`]?/gi);
+    if (tableMatches) {
+      tableMatches.forEach(match => {
+        const tableName = match.replace(/FROM\s+|JOIN\s+|["`]/gi, '').trim().toUpperCase();
+        if (!validTables.includes(tableName) && tableName !== '') {
+          errors.push(`Invalid tables detected: ${tableName}`);
+        }
+      });
+    }
+
+    // Check for lowercase table names (should be uppercase)
+    const lowercaseTableMatches = sql.match(/["`]([a-z]+)["`]/g);
+    if (lowercaseTableMatches) {
+      const lowercaseTables = lowercaseTableMatches
+        .map(match => match.replace(/["`]/g, ''))
+        .filter(table => validTables.map(t => t.toLowerCase()).includes(table));
+      
+      if (lowercaseTables.length > 0) {
+        errors.push(`Invalid joins detected: ${lowercaseTables.map(t => t.toUpperCase()).join(', ')} = ${lowercaseTables.map(t => t.toUpperCase()).join(', ')}`);
+      }
+    }
+
+    // Check for required SAP table references
     context.tables.forEach((table: SAPTableContext) => {
       if (!sqlUpper.includes(table.name)) {
         hasWarnings = true;
