@@ -26,6 +26,7 @@ import {
   Download
 } from 'lucide-react'
 import { type QueryParameters } from './AppSidebar'
+import { formatSQLSimple } from '@/lib/sqlFormatter'
 
 // Types
 interface QueryResult {
@@ -357,7 +358,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => copyToClipboard(queryResult.sql)}
+                    onClick={() => copyToClipboard(formatSQLSimple(queryResult.sql))}
                   >
                     <Copy className="mr-2 h-4 w-4" />
                     Copy
@@ -365,7 +366,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
                 </div>
                 
                 <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">
-                  <code>{queryResult.sql}</code>
+                  <code>{formatSQLSimple(queryResult.sql)}</code>
                 </pre>
 
                 {queryResult.validationErrors && queryResult.validationErrors.length > 0 && (

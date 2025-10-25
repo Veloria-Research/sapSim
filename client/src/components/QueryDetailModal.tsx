@@ -37,6 +37,7 @@ import {
   Copy,
   RefreshCw,
 } from "lucide-react";
+import { formatSQLSimple } from "@/lib/sqlFormatter";
 
 interface QueryHistory {
   id: string;
@@ -312,7 +313,7 @@ export function QueryDetailModal({
                     SQL Query
                   </CardTitle>
                   <Button
-                    onClick={() => copyToClipboard(query.sql)}
+                    onClick={() => copyToClipboard(formatSQLSimple(query.sql))}
                     variant="outline"
                     size="sm"
                   >
@@ -324,7 +325,7 @@ export function QueryDetailModal({
               <CardContent>
                 <div className="overflow-x-auto p-4 text-gray-100 bg-gray-900 rounded-lg">
                   <pre className="text-sm whitespace-pre-wrap break-words">
-                    <code>{query.sql}</code>
+                    <code>{formatSQLSimple(query.sql)}</code>
                   </pre>
                 </div>
               </CardContent>

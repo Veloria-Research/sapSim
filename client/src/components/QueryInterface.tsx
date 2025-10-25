@@ -20,6 +20,7 @@ import {
   Lightbulb,
   Brain
 } from 'lucide-react'
+import { formatSQLSimple } from '@/lib/sqlFormatter'
 
 // Types
 interface QueryResult {
@@ -399,7 +400,7 @@ export function QueryInterface() {
             {/* SQL Code */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <pre className="text-sm font-mono whitespace-pre-wrap">
-                {queryResult.sql}
+                {formatSQLSimple(queryResult.sql)}
               </pre>
             </div>
 
