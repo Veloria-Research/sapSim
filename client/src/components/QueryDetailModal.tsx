@@ -175,7 +175,7 @@ export function QueryDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex gap-2 items-center">
             <Database className="w-5 h-5" />

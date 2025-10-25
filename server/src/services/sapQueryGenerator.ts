@@ -615,20 +615,20 @@ export class SAPQueryGenerator {
     explanation: string;
     businessLogic: string;
   }> {
-    const systemPrompt = `You are an expert SAP consultant and SQL developer. Generate optimized SQL queries for SAP systems.
+    const systemPrompt = `You are an expert SAP consultant and SQL developer specializing in complex analytical queries. Generate optimized SQL queries for SAP systems.
 
 CRITICAL REQUIREMENTS:
 1. ONLY use tables from this EXACT list (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
 2. NEVER use any other SAP tables (like VBRK, VBRP, etc.) - they do not exist in this system
 3. Use EXACT column names as provided (case-sensitive) - all column names are UPPERCASE
 4. Table names and column names are CASE-SENSITIVE and must be used EXACTLY as shown
-5. Use proper column aliases with descriptive business names
+5. Use proper column aliases with descriptive business names using underscores (e.g., Total_Order_Value)
 6. Follow SAP naming conventions and business logic
 7. Use ${request.preferredJoinType?.toUpperCase() || "INNER"} JOINs unless business logic requires otherwise
 8. Include appropriate WHERE clauses for filtering
 9. Return only valid PostgreSQL-compatible SQL
 10. Do NOT use lowercase table or column names - use the exact case provided
-11. If you cannot fulfill the request with the available tables, explain the limitation
+11. If you cannot fulfill the request with the available tables, explain the limitation clearly
 
 Available SAP Tables:
 ${context.tables
@@ -636,13 +636,37 @@ ${context.tables
     (table) => `
 ${table.name} (${table.module} Module) - ${table.description}
 Business Purpose: ${table.businessPurpose}
-Columns: ${table.columns.map((col) => `${col.name} (${col.type}) - ${col.description}`).join(", ")}
-`
+Key Columns: ${table.columns
+      .slice(0, 8)
+      .map((col) => `${col.name} (${col.type}) - ${col.description}`)
+      .join(", ")}`
   )
   .join("\n")}
 
 Available Relationships:
-${context.relationships.map((rel) => `${rel.leftTable}.${rel.leftColumn} = ${rel.rightTable}.${rel.rightColumn} (${rel.joinType} JOIN) - ${rel.businessRule}`).join("\n")}
+${context.relationships
+  .map(
+    (rel) =>
+      `${rel.leftTable}.${rel.leftColumn} -> ${rel.rightTable}.${rel.rightColumn} (${rel.joinType})`
+  )
+  .join("\n")}
+
+For complex analytical queries, use these advanced SQL techniques:
+- CTEs (WITH clauses) for multi-step calculations and better readability
+- Window functions (ROW_NUMBER, RANK, SUM() OVER, etc.) for analytical calculations
+- CASE statements for conditional logic and categorization
+- Subqueries for complex filtering and calculations
+- Proper aggregations (SUM, COUNT, AVG) with GROUP BY
+- Date/time functions for temporal analysis
+- String functions for text analysis and pattern matching
+- Mathematical functions for ratio and score calculations
+
+CRITICAL JSON FORMATTING:
+- You MUST return ONLY a valid JSON object
+- Do NOT include markdown code blocks, backticks, or any other formatting
+- Do NOT include any text before or after the JSON
+- Ensure all strings are properly escaped
+- For complex SQL, break long queries into readable lines within the JSON string using \\n
 
 EXAMPLE SQL STRUCTURE:
 SELECT "VBAK"."VBELN"  AS Sales_Document_Number,
@@ -675,33 +699,60 @@ Generate a SQL query that follows SAP best practices and includes:
 3. Technical explanation
 4. Business logic explanation
 
-Return as JSON: {"sql": "...", "confidence": 0.95, "explanation": "...", "businessLogic": "..."}`;
+Return the response in this exact JSON format (and nothing else):
+{
+  "sql": "WITH customer_analysis AS (\\n  SELECT ...\\n) SELECT ... FROM customer_analysis",
+  "confidence": 0.95,
+  "explanation": "Technical explanation of the query structure, CTEs, and joins used",
+  "businessLogic": "Business logic explanation covering the analytical approach and metrics calculated"
+}`;
 
     const userPrompt = `Business Requirement: ${prompt}
 
 STRICT CONSTRAINTS:
 - ONLY use these tables: ${context.tables.map((t) => t.name).join(", ")}
 - DO NOT use any other SAP tables (VBRK, VBRP, etc.) - they do not exist
-- If the requirement cannot be met with available tables, explain the limitation
+- If the requirement cannot be met with available tables, explain the limitation clearly
 
-Please generate a SQL query that:
-1. Uses ONLY the EXACT table names provided (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
-2. Includes meaningful column aliases using underscores (e.g., Sales_Document_Number)
-3. Implements proper JOIN conditions based on SAP relationships
-4. Follows SAP business logic and conventions
-5. Uses proper PostgreSQL syntax
+Query Generation Guidelines:
+1. Use ONLY the EXACT table names provided (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
+2. Include meaningful column aliases using underscores (e.g., Total_Order_Value, Customer_Name)
+3. Implement proper JOIN conditions based on SAP relationships
+4. Follow SAP business logic and conventions
+5. Use proper PostgreSQL syntax with advanced features
 
-CRITICAL: You MUST return ONLY a valid JSON object with no additional text, explanations, or formatting. 
-Do NOT include markdown code blocks, backticks, or any other formatting.
-Do NOT include any text before or after the JSON.
+For Complex Analytical Requirements:
+- Break down multi-dimensional analysis into logical CTEs
+- Use window functions for ranking, running totals, and comparative analysis
+- Implement proper date filtering and time-series analysis
+- Calculate business metrics using appropriate aggregations
+- Use CASE statements for categorization and conditional logic
+- Apply string functions for pattern matching and text analysis
+- Create calculated fields for ratios, scores, and derived metrics
+
+CRITICAL JSON FORMATTING RULES:
+- Return ONLY a valid JSON object
+- NO markdown code blocks, backticks, or additional formatting
+- NO text before or after the JSON
+- Properly escape all strings within the JSON
+- Use \\n for line breaks in SQL strings
+- Ensure the JSON is complete and well-formed
 
 Return the response in this exact JSON format (and nothing else):
 {
-  "sql": "SELECT ... FROM ... WHERE ...",
+  "sql": "WITH analysis_cte AS (\\n  SELECT ...\\n  FROM ...\\n  WHERE ...\\n)\\nSELECT ... FROM analysis_cte",
   "confidence": 0.95,
-  "explanation": "Technical explanation of the query structure and joins",
-  "businessLogic": "Business logic explanation"
+  "explanation": "Technical explanation covering CTEs, joins, window functions, and analytical approach",
+  "businessLogic": "Business logic explanation covering metrics, calculations, and analytical insights provided"
 }`;
+
+    // Determine appropriate token limit based on prompt complexity
+    const promptComplexity = this.assessPromptComplexity(prompt);
+    const maxTokens = this.getTokenLimitForComplexity(promptComplexity);
+
+    console.log(
+      `Prompt complexity: ${promptComplexity}, using ${maxTokens} max tokens`
+    );
 
     const completion = await this.openai.chat.completions.create({
       model: "gpt-4.1",
@@ -710,17 +761,22 @@ Return the response in this exact JSON format (and nothing else):
         { role: "user", content: userPrompt },
       ],
       temperature: 0.1,
-      max_tokens: 1500,
+      max_tokens: maxTokens,
     });
 
     try {
       const content = completion.choices[0].message.content;
       if (!content) throw new Error("No content in OpenAI response");
 
-      console.log("OpenAI Response Content:", content);
+      console.log(
+        "OpenAI Response Content (first 500 chars):",
+        content.substring(0, 500)
+      );
+      console.log("Response length:", content.length);
 
-      // Parse JSON response with multiple fallback strategies
+      // Enhanced JSON parsing with better error handling
       let result: any = null;
+      let parseMethod = "";
 
       // Strategy 1: Try to find JSON between ```json and ``` markers
       const jsonCodeBlockMatch = content.match(
@@ -729,31 +785,19 @@ Return the response in this exact JSON format (and nothing else):
       if (jsonCodeBlockMatch) {
         try {
           result = JSON.parse(jsonCodeBlockMatch[1]);
+          parseMethod = "code block";
           console.log("Successfully parsed JSON from code block");
         } catch (e) {
           console.log("Failed to parse JSON from code block:", e);
         }
       }
 
-      // Strategy 2: Try to find JSON between { and } (original approach, but improved)
-      if (!result) {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            result = JSON.parse(jsonMatch[0]);
-            console.log("Successfully parsed JSON with regex match");
-          } catch (e) {
-            console.log("Failed to parse JSON with regex match:", e);
-          }
-        }
-      }
-
-      // Strategy 3: Try to extract JSON by finding the first { and matching }
+      // Strategy 2: Try to find complete JSON object with balanced braces
       if (!result) {
         const firstBrace = content.indexOf("{");
         if (firstBrace !== -1) {
           let braceCount = 0;
-          let endIndex = firstBrace;
+          let endIndex = -1;
 
           for (let i = firstBrace; i < content.length; i++) {
             if (content[i] === "{") braceCount++;
@@ -764,10 +808,11 @@ Return the response in this exact JSON format (and nothing else):
             }
           }
 
-          if (braceCount === 0) {
+          if (endIndex !== -1) {
             try {
               const jsonStr = content.substring(firstBrace, endIndex + 1);
               result = JSON.parse(jsonStr);
+              parseMethod = "brace matching";
               console.log("Successfully parsed JSON with brace matching");
             } catch (e) {
               console.log("Failed to parse JSON with brace matching:", e);
@@ -776,23 +821,49 @@ Return the response in this exact JSON format (and nothing else):
         }
       }
 
-      // Strategy 4: Try to parse the entire content as JSON
+      // Strategy 3: Try to parse the entire content as JSON
       if (!result) {
         try {
           result = JSON.parse(content);
+          parseMethod = "entire content";
           console.log("Successfully parsed entire content as JSON");
         } catch (e) {
           console.log("Failed to parse entire content as JSON:", e);
         }
       }
 
-      // If all strategies fail, throw an error with detailed information
+      // Strategy 4: Try to extract and repair truncated JSON
       if (!result) {
+        result = this.attemptJSONRepair(content);
+        if (result) {
+          parseMethod = "JSON repair";
+          console.log("Successfully repaired and parsed truncated JSON");
+        }
+      }
+
+      // If all strategies fail, check if response was truncated
+      if (!result) {
+        const isTruncated = this.isResponseTruncated(content);
+        if (isTruncated) {
+          console.error(
+            "Response appears to be truncated. Attempting retry with higher token limit."
+          );
+          // Retry with higher token limit if not already at maximum
+          if (maxTokens < 32768) {
+            return this.generateSAPSQL(prompt, context, {
+              ...request,
+              maxTables: Math.min(request.maxTables || 5, 3), // Reduce complexity for retry
+            });
+          }
+        }
+
         console.error("All JSON parsing strategies failed. Content:", content);
         throw new Error(
-          `Invalid JSON response format. Content: ${content.substring(0, 500)}...`
+          `Invalid JSON response format. Content: ${content.substring(0, 500)}... (Parse method attempted: ${parseMethod || "none"})`
         );
       }
+
+      console.log(`Successfully parsed JSON using method: ${parseMethod}`);
 
       // Validate that the result has required fields
       if (!result.sql || typeof result.sql !== "string") {
@@ -851,6 +922,168 @@ Return the response in this exact JSON format (and nothing else):
       // Fallback to a simple query
       return this.generateFallbackSAPQuery(prompt, context);
     }
+  }
+
+  private assessPromptComplexity(
+    prompt: string
+  ): "simple" | "medium" | "complex" | "extreme" {
+    const complexityIndicators = {
+      simple: ["show", "get", "find", "list"],
+      medium: ["join", "group by", "order by", "count", "sum", "average"],
+      complex: [
+        "analysis",
+        "report",
+        "breakdown",
+        "correlation",
+        "pattern",
+        "trend",
+      ],
+      extreme: [
+        "multi-dimensional",
+        "comprehensive",
+        "cross-reference",
+        "time-series",
+        "seasonal",
+        "complexity score",
+        "confidence interval",
+      ],
+    };
+
+    const lowerPrompt = prompt.toLowerCase();
+    let score = 0;
+
+    // Count indicators for each complexity level
+    Object.entries(complexityIndicators).forEach(([level, indicators]) => {
+      const matches = indicators.filter((indicator) =>
+        lowerPrompt.includes(indicator)
+      ).length;
+      switch (level) {
+        case "simple":
+          score += matches * 1;
+          break;
+        case "medium":
+          score += matches * 2;
+          break;
+        case "complex":
+          score += matches * 3;
+          break;
+        case "extreme":
+          score += matches * 5;
+          break;
+      }
+    });
+
+    // Additional complexity factors
+    const wordCount = prompt.split(/\s+/).length;
+    const hasMultipleConditions = (prompt.match(/\band\b/gi) || []).length > 3;
+    const hasCalculations = /calculate|ratio|score|metric|percentage/i.test(
+      prompt
+    );
+    const hasTimeAnalysis = /monthly|seasonal|time-series|date|period/i.test(
+      prompt
+    );
+
+    if (wordCount > 200) score += 3;
+    if (hasMultipleConditions) score += 2;
+    if (hasCalculations) score += 2;
+    if (hasTimeAnalysis) score += 2;
+
+    if (score >= 15) return "extreme";
+    if (score >= 10) return "complex";
+    if (score >= 5) return "medium";
+    return "simple";
+  }
+
+  private getTokenLimitForComplexity(
+    complexity: "simple" | "medium" | "complex" | "extreme"
+  ): number {
+    switch (complexity) {
+      case "simple":
+        return 1000;
+      case "medium":
+        return 2000;
+      case "complex":
+        return 3000;
+      case "extreme":
+        return 32768;
+      default:
+        return 1500;
+    }
+  }
+
+  private attemptJSONRepair(content: string): any | null {
+    try {
+      // Try to find the start of JSON and attempt to complete it
+      const firstBrace = content.indexOf("{");
+      if (firstBrace === -1) return null;
+
+      let jsonStr = content.substring(firstBrace);
+
+      // If the JSON appears to be truncated, try to close it properly
+      if (!jsonStr.endsWith("}")) {
+        // Count open braces to determine how many closing braces we need
+        let openBraces = 0;
+        let inString = false;
+        let escaped = false;
+
+        for (let i = 0; i < jsonStr.length; i++) {
+          const char = jsonStr[i];
+
+          if (escaped) {
+            escaped = false;
+            continue;
+          }
+
+          if (char === "\\") {
+            escaped = true;
+            continue;
+          }
+
+          if (char === '"') {
+            inString = !inString;
+            continue;
+          }
+
+          if (!inString) {
+            if (char === "{") openBraces++;
+            if (char === "}") openBraces--;
+          }
+        }
+
+        // Add missing closing braces and quotes if needed
+        if (inString) {
+          jsonStr += '"';
+        }
+
+        // Close any incomplete string values
+        if (jsonStr.match(/:\s*"[^"]*$/)) {
+          jsonStr += '"';
+        }
+
+        // Add missing closing braces
+        for (let i = 0; i < openBraces; i++) {
+          jsonStr += "}";
+        }
+      }
+
+      return JSON.parse(jsonStr);
+    } catch (error) {
+      console.log("JSON repair failed:", error);
+      return null;
+    }
+  }
+
+  private isResponseTruncated(content: string): boolean {
+    // Check for common truncation indicators
+    const truncationIndicators = [
+      /\.\.\.$/, // Ends with ...
+      /[^}]$/, // Doesn't end with closing brace
+      /"sql":\s*"[^"]*$/, // SQL field is not properly closed
+      /,\s*$/, // Ends with comma
+      /"[^"]*$/, // Ends with unclosed quote
+    ];
+
+    return truncationIndicators.some((pattern) => pattern.test(content.trim()));
   }
 
   private generateFallbackSAPQuery(
