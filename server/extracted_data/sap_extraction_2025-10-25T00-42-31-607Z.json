@@ -1,0 +1,190 @@
+{
+  "tables": [
+    {
+      "tableName": "MARA",
+      "fields": [
+        {
+          "name": "MATNR",
+          "type": "VARCHAR(18)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": false
+        },
+        {
+          "name": "MTART",
+          "type": "CHAR(4)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "MATKL",
+          "type": "VARCHAR(9)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "MEINS",
+          "type": "CHAR(3)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "LAEDA",
+          "type": "DATE",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "sampleData": [],
+      "recordCount": 0
+    },
+    {
+      "tableName": "KNA1",
+      "fields": [
+        {
+          "name": "KUNNR",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": false
+        },
+        {
+          "name": "LAND1",
+          "type": "CHAR(2)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ORT01",
+          "type": "VARCHAR(25)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "NAME1",
+          "type": "VARCHAR(35)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "REGIO",
+          "type": "VARCHAR(3)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "sampleData": [],
+      "recordCount": 0
+    },
+    {
+      "tableName": "VBAK",
+      "fields": [
+        {
+          "name": "VBELN",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": false
+        },
+        {
+          "name": "AUART",
+          "type": "CHAR(4)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ERDAT",
+          "type": "DATE",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "KUNNR",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "referencedTable": "KNA1",
+          "referencedField": "KUNNR"
+        },
+        {
+          "name": "VKORG",
+          "type": "VARCHAR(4)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "sampleData": [],
+      "recordCount": 0
+    },
+    {
+      "tableName": "VBAP",
+      "fields": [
+        {
+          "name": "VBELN",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": true,
+          "referencedTable": "VBAK",
+          "referencedField": "VBELN"
+        },
+        {
+          "name": "POSNR",
+          "type": "VARCHAR(6)",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "isForeignKey": false
+        },
+        {
+          "name": "MATNR",
+          "type": "VARCHAR(18)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "referencedTable": "MARA",
+          "referencedField": "MATNR"
+        },
+        {
+          "name": "KWMENG",
+          "type": "DECIMAL(15,3)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "WERKS",
+          "type": "VARCHAR(4)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ERDAT",
+          "type": "DATE",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "sampleData": [],
+      "recordCount": 0
+    }
+  ],
+  "extractedAt": "2025-10-25T00:42:31.607Z",
+  "metadata": {
+    "totalTables": 4,
+    "totalRecords": 0
+  }
+}

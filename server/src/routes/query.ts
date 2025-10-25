@@ -231,9 +231,17 @@ router.get("/history", async (req: Request, res: Response) => {
         id: true,
         prompt: true,
         sql: true,
+        explanation: true,
+        businessLogic: true,
         confidence: true,
         complexity: true,
+        tablesUsed: true,
+        joinTypes: true,
         validationStatus: true,
+        validationErrors: true,
+        executionTime: true,
+        resultCount: true,
+        templateUsed: true,
         createdAt: true
       }
     });

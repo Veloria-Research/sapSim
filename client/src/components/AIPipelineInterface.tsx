@@ -1,237 +1,256 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Spinner } from '@/components/ui/spinner'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Brain, 
-  Database, 
-  GitBranch, 
-  Zap, 
-  CheckCircle, 
-  AlertTriangle, 
-  Clock, 
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QueryHistory } from "./QueryHistory";
+import {
+  Brain,
+  Database,
+  GitBranch,
+  Zap,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
   Play,
   RefreshCw,
   BarChart3,
   FileText,
-  Settings
-} from 'lucide-react'
+  Settings,
+  History,
+} from "lucide-react";
 
 interface PipelineStatus {
-  isRunning: boolean
-  currentStage: string
-  progress: number
+  isRunning: boolean;
+  currentStage: string;
+  progress: number;
   stages: {
-    name: string
-    status: 'pending' | 'running' | 'completed' | 'error'
-    duration?: number
-    details?: string
-  }[]
+    name: string;
+    status: "pending" | "running" | "completed" | "error";
+    duration?: number;
+    details?: string;
+  }[];
 }
 
 interface PipelineResult {
-  tablesAnalyzed: number
-  relationshipsInferred: number
-  schemasProcessed: number
-  status: string
+  tablesAnalyzed: number;
+  relationshipsInferred: number;
+  schemasProcessed: number;
+  status: string;
 }
 
 interface AnalyticsData {
   overview: {
-    totalQueries: number
-    validQueries: number
-    averageConfidence: number
-    validationRate: number
-  }
+    totalQueries: number;
+    validQueries: number;
+    averageConfidence: number;
+    validationRate: number;
+  };
   complexityDistribution: Array<{
-    complexity: string
-    _count: { complexity: number }
-  }>
+    complexity: string;
+    _count: { complexity: number };
+  }>;
   recentQueries: Array<{
-    prompt: string
-    confidence: number
-    complexity: string
-    validationStatus: string
-    createdAt: string
-  }>
+    prompt: string;
+    confidence: number;
+    complexity: string;
+    validationStatus: string;
+    createdAt: string;
+  }>;
   popularTables: Array<{
-    table: string
-    count: number
-  }>
+    table: string;
+    count: number;
+  }>;
 }
 
 export function AIPipelineInterface() {
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>({
     isRunning: false,
-    currentStage: '',
+    currentStage: "",
     progress: 0,
     stages: [
-      { name: 'Data Extraction', status: 'pending' },
-      { name: 'Schema Summarization', status: 'pending' },
-      { name: 'Relationship Inference', status: 'pending' },
-      { name: 'Column Analysis', status: 'pending' },
-      { name: 'Ground Truth Building', status: 'pending' }
-    ]
-  })
-  
-  const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(null)
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isInitializing, setIsInitializing] = useState(false)
+      { name: "Data Extraction", status: "pending" },
+      { name: "Schema Summarization", status: "pending" },
+      { name: "Relationship Inference", status: "pending" },
+      { name: "Column Analysis", status: "pending" },
+      { name: "Ground Truth Building", status: "pending" },
+    ],
+  });
+
+  const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(
+    null
+  );
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   useEffect(() => {
-    loadAnalytics()
-  }, [])
+    loadAnalytics();
+  }, []);
 
   const loadAnalytics = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/ai-pipeline/analytics')
+      const response = await fetch(
+        "http://localhost:3001/api/ai-pipeline/analytics"
+      );
       if (response.ok) {
-        const data = await response.json()
-        setAnalytics(data.analytics)
+        const data = await response.json();
+        setAnalytics(data.analytics);
       }
     } catch (err) {
-      console.error('Failed to load analytics:', err)
+      console.error("Failed to load analytics:", err);
     }
-  }
+  };
 
   const runFullPipeline = async () => {
-    setIsInitializing(true)
-    setError(null)
-    setPipelineResult(null)
-    
+    setIsInitializing(true);
+    setError(null);
+    setPipelineResult(null);
+
     // Reset pipeline status
     setPipelineStatus({
       isRunning: true,
-      currentStage: 'Data Extraction',
+      currentStage: "Data Extraction",
       progress: 0,
       stages: [
-        { name: 'Data Extraction', status: 'running' },
-        { name: 'Schema Summarization', status: 'pending' },
-        { name: 'Relationship Inference', status: 'pending' },
-        { name: 'Column Analysis', status: 'pending' },
-        { name: 'Ground Truth Building', status: 'pending' }
-      ]
-    })
+        { name: "Data Extraction", status: "running" },
+        { name: "Schema Summarization", status: "pending" },
+        { name: "Relationship Inference", status: "pending" },
+        { name: "Column Analysis", status: "pending" },
+        { name: "Ground Truth Building", status: "pending" },
+      ],
+    });
 
     try {
-      const response = await fetch('http://localhost:3001/api/ai/process-all', {
-        method: 'POST',
+      const response = await fetch("http://localhost:3001/api/ai/process-all", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json()
-      
+      const data = await response.json();
+
       // Update pipeline status to completed
-      setPipelineStatus(prev => ({
+      setPipelineStatus((prev) => ({
         ...prev,
         isRunning: false,
-        currentStage: 'Completed',
+        currentStage: "Completed",
         progress: 100,
-        stages: prev.stages.map(stage => ({ ...stage, status: 'completed' }))
-      }))
+        stages: prev.stages.map((stage) => ({ ...stage, status: "completed" })),
+      }));
 
       setPipelineResult({
         tablesAnalyzed: data.pipeline.extraction.data.tables.length,
         relationshipsInferred: 0, // This would come from the actual response
         schemasProcessed: data.pipeline.summarization.summaries.length,
-        status: 'Pipeline completed successfully'
-      })
+        status: "Pipeline completed successfully",
+      });
 
       // Reload analytics
-      await loadAnalytics()
-
+      await loadAnalytics();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to run pipeline')
-      setPipelineStatus(prev => ({
+      setError(err instanceof Error ? err.message : "Failed to run pipeline");
+      setPipelineStatus((prev) => ({
         ...prev,
         isRunning: false,
-        stages: prev.stages.map(stage => 
-          stage.status === 'running' ? { ...stage, status: 'error' } : stage
-        )
-      }))
+        stages: prev.stages.map((stage) =>
+          stage.status === "running" ? { ...stage, status: "error" } : stage
+        ),
+      }));
     } finally {
-      setIsInitializing(false)
+      setIsInitializing(false);
     }
-  }
+  };
 
   const initializeAIPipeline = async () => {
-    setIsInitializing(true)
-    setError(null)
-    setPipelineResult(null)
+    setIsInitializing(true);
+    setError(null);
+    setPipelineResult(null);
 
     try {
-      const response = await fetch('http://localhost:3001/api/ai-pipeline/initialize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+      const response = await fetch(
+        "http://localhost:3001/api/ai-pipeline/initialize",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json()
-      setPipelineResult(data.result)
-      await loadAnalytics()
-
+      const data = await response.json();
+      setPipelineResult(data.result);
+      await loadAnalytics();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize AI pipeline')
+      setError(
+        err instanceof Error ? err.message : "Failed to initialize AI pipeline"
+      );
     } finally {
-      setIsInitializing(false)
+      setIsInitializing(false);
     }
-  }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />
-      case 'running':
-        return <Spinner className="h-4 w-4 text-blue-600" />
-      case 'error':
-        return <AlertTriangle className="h-4 w-4 text-red-600" />
+      case "completed":
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case "running":
+        return <Spinner className="w-4 h-4 text-blue-600" />;
+      case "error":
+        return <AlertTriangle className="w-4 h-4 text-red-600" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-400" />
+        return <Clock className="w-4 h-4 text-gray-400" />;
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      case 'running':
-        return 'bg-blue-100 text-blue-800'
-      case 'error':
-        return 'bg-red-100 text-red-800'
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "running":
+        return "bg-blue-100 text-blue-800";
+      case "error":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-gray-100 text-gray-800'
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Pipeline</h1>
-        <p className="text-gray-600">Manage and monitor the AI pipeline for schema analysis and query generation</p>
+        <h1 className="mb-2 text-3xl font-bold text-gray-900">AI Pipeline</h1>
+        <p className="text-gray-600">
+          Manage and monitor the AI pipeline for schema analysis and query
+          generation
+        </p>
       </div>
 
       <Tabs defaultValue="pipeline" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="pipeline">Pipeline Control</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="queries">Query History</TabsTrigger>
           <TabsTrigger value="status">System Status</TabsTrigger>
         </TabsList>
 
@@ -239,48 +258,49 @@ export function AIPipelineInterface() {
           {/* Pipeline Controls */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5" />
+              <CardTitle className="flex gap-2 items-center">
+                <Brain className="w-5 h-5" />
                 Pipeline Operations
               </CardTitle>
               <CardDescription>
-                Initialize and manage the AI pipeline for comprehensive data analysis
+                Initialize and manage the AI pipeline for comprehensive data
+                analysis
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button 
-                  onClick={runFullPipeline} 
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Button
+                  onClick={runFullPipeline}
                   disabled={isInitializing || pipelineStatus.isRunning}
-                  className="h-20 flex flex-col items-center justify-center gap-2"
+                  className="flex flex-col gap-2 justify-center items-center h-20"
                 >
                   {isInitializing ? (
                     <>
-                      <Spinner className="h-6 w-6" />
+                      <Spinner className="w-6 h-6" />
                       <span>Running Full Pipeline...</span>
                     </>
                   ) : (
                     <>
-                      <Zap className="h-6 w-6" />
+                      <Zap className="w-6 h-6" />
                       <span>Run Full Pipeline</span>
                     </>
                   )}
                 </Button>
 
-                <Button 
-                  onClick={initializeAIPipeline} 
+                <Button
+                  onClick={initializeAIPipeline}
                   disabled={isInitializing || pipelineStatus.isRunning}
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2"
+                  className="flex flex-col gap-2 justify-center items-center h-20"
                 >
                   {isInitializing ? (
                     <>
-                      <Spinner className="h-6 w-6" />
+                      <Spinner className="w-6 h-6" />
                       <span>Initializing...</span>
                     </>
                   ) : (
                     <>
-                      <Settings className="h-6 w-6" />
+                      <Settings className="w-6 h-6" />
                       <span>Initialize Pipeline</span>
                     </>
                   )}
@@ -289,7 +309,7 @@ export function AIPipelineInterface() {
 
               {error && (
                 <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTriangle className="w-4 h-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -300,8 +320,8 @@ export function AIPipelineInterface() {
           {(pipelineStatus.isRunning || pipelineResult) && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GitBranch className="h-5 w-5" />
+                <CardTitle className="flex gap-2 items-center">
+                  <GitBranch className="w-5 h-5" />
                   Pipeline Status
                 </CardTitle>
               </CardHeader>
@@ -312,14 +332,20 @@ export function AIPipelineInterface() {
                       <span>Current Stage: {pipelineStatus.currentStage}</span>
                       <span>{pipelineStatus.progress}%</span>
                     </div>
-                    <Progress value={pipelineStatus.progress} className="w-full" />
+                    <Progress
+                      value={pipelineStatus.progress}
+                      className="w-full"
+                    />
                   </div>
                 )}
 
                 <div className="space-y-2">
                   {pipelineStatus.stages.map((stage, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
+                    <div
+                      key={index}
+                      className="flex justify-between items-center p-3 rounded-lg border"
+                    >
+                      <div className="flex gap-3 items-center">
                         {getStatusIcon(stage.status)}
                         <span className="font-medium">{stage.name}</span>
                       </div>
@@ -331,20 +357,30 @@ export function AIPipelineInterface() {
                 </div>
 
                 {pipelineResult && (
-                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <h4 className="font-medium text-green-900 mb-2">Pipeline Results</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div className="p-4 mt-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="mb-2 font-medium text-green-900">
+                      Pipeline Results
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
                       <div>
                         <span className="text-green-700">Tables Analyzed:</span>
-                        <span className="ml-2 font-medium">{pipelineResult.tablesAnalyzed}</span>
+                        <span className="ml-2 font-medium">
+                          {pipelineResult.tablesAnalyzed}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-green-700">Schemas Processed:</span>
-                        <span className="ml-2 font-medium">{pipelineResult.schemasProcessed}</span>
+                        <span className="text-green-700">
+                          Schemas Processed:
+                        </span>
+                        <span className="ml-2 font-medium">
+                          {pipelineResult.schemasProcessed}
+                        </span>
                       </div>
                       <div>
                         <span className="text-green-700">Status:</span>
-                        <span className="ml-2 font-medium">{pipelineResult.status}</span>
+                        <span className="ml-2 font-medium">
+                          {pipelineResult.status}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -358,51 +394,71 @@ export function AIPipelineInterface() {
           {analytics && (
             <>
               {/* Overview Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <Card>
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Total Queries</p>
-                        <p className="text-2xl font-bold">{analytics.overview?.totalQueries || 0}</p>
+                        <p className="text-sm font-medium text-gray-600">
+                          Total Queries
+                        </p>
+                        <p className="text-2xl font-bold">
+                          {analytics.overview?.totalQueries || 0}
+                        </p>
                       </div>
-                      <Database className="h-8 w-8 text-blue-600" />
+                      <Database className="w-8 h-8 text-blue-600" />
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Valid Queries</p>
-                        <p className="text-2xl font-bold">{analytics.overview?.validQueries || 0}</p>
+                        <p className="text-sm font-medium text-gray-600">
+                          Valid Queries
+                        </p>
+                        <p className="text-2xl font-bold">
+                          {analytics.overview?.validQueries || 0}
+                        </p>
                       </div>
-                      <CheckCircle className="h-8 w-8 text-green-600" />
+                      <CheckCircle className="w-8 h-8 text-green-600" />
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Avg Confidence</p>
-                        <p className="text-2xl font-bold">{(analytics.overview?.averageConfidence || 0).toFixed(1)}%</p>
+                        <p className="text-sm font-medium text-gray-600">
+                          Avg Confidence
+                        </p>
+                        <p className="text-2xl font-bold">
+                          {(analytics.overview?.averageConfidence || 0).toFixed(
+                            1
+                          )}
+                          %
+                        </p>
                       </div>
-                      <BarChart3 className="h-8 w-8 text-purple-600" />
+                      <BarChart3 className="w-8 h-8 text-purple-600" />
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Validation Rate</p>
-                        <p className="text-2xl font-bold">{(analytics.overview?.validationRate || 0).toFixed(1)}%</p>
+                        <p className="text-sm font-medium text-gray-600">
+                          Validation Rate
+                        </p>
+                        <p className="text-2xl font-bold">
+                          {(analytics.overview?.validationRate || 0).toFixed(1)}
+                          %
+                        </p>
                       </div>
-                      <CheckCircle className="h-8 w-8 text-orange-600" />
+                      <CheckCircle className="w-8 h-8 text-orange-600" />
                     </div>
                   </CardContent>
                 </Card>
@@ -412,36 +468,52 @@ export function AIPipelineInterface() {
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Queries</CardTitle>
-                  <CardDescription>Latest queries generated by the AI pipeline</CardDescription>
+                  <CardDescription>
+                    Latest queries generated by the AI pipeline
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {analytics.recentQueries && analytics.recentQueries.length > 0 ? (
+                  <div className="space-y-3 text-left">
+                    {analytics.recentQueries &&
+                    analytics.recentQueries.length > 0 ? (
                       analytics.recentQueries.map((query, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div
+                          key={index}
+                          className="flex justify-between items-center p-3 rounded-lg border"
+                        >
                           <div className="flex-1">
-                            <p className="font-medium truncate">{query.prompt}</p>
+                            <p className="font-medium truncate">
+                              {query.prompt}
+                            </p>
                             <p className="text-sm text-gray-500">
                               {new Date(query.createdAt).toLocaleDateString()}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex gap-2 items-center">
                             <Badge variant="outline">{query.complexity}</Badge>
-                            <Badge className={
-                              query.validationStatus === 'valid' ? 'bg-green-100 text-green-800' : 
-                              query.validationStatus === 'warning' ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-red-100 text-red-800'
-                            }>
+                            <Badge
+                              className={
+                                query.validationStatus === "valid"
+                                  ? "bg-green-100 text-green-800"
+                                  : query.validationStatus === "warning"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }
+                            >
                               {query.validationStatus}
                             </Badge>
-                            <span className="text-sm font-medium">{query.confidence.toFixed(1)}%</span>
+                            <span className="text-sm font-medium">
+                              {query.confidence.toFixed(1)}%
+                            </span>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="py-8 text-center text-gray-500">
                         <p>No recent queries found</p>
-                        <p className="text-sm">Run the AI pipeline to generate some queries</p>
+                        <p className="text-sm">
+                          Run the AI pipeline to generate some queries
+                        </p>
                       </div>
                     )}
                   </div>
@@ -451,11 +523,15 @@ export function AIPipelineInterface() {
           )}
         </TabsContent>
 
+        <TabsContent value="queries" className="space-y-6">
+          <QueryHistory />
+        </TabsContent>
+
         <TabsContent value="status" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5" />
+              <CardTitle className="flex gap-2 items-center">
+                <RefreshCw className="w-5 h-5" />
                 System Status
               </CardTitle>
               <CardDescription>
@@ -464,36 +540,36 @@ export function AIPipelineInterface() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                <div className="flex justify-between items-center p-3 rounded-lg border">
+                  <div className="flex gap-3 items-center">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                     <span className="font-medium">Schema Summarizer</span>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                  <Badge className="text-green-800 bg-green-100">Active</Badge>
                 </div>
-                
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+
+                <div className="flex justify-between items-center p-3 rounded-lg border">
+                  <div className="flex gap-3 items-center">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                     <span className="font-medium">Relationship Inference</span>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                  <Badge className="text-green-800 bg-green-100">Active</Badge>
                 </div>
-                
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+
+                <div className="flex justify-between items-center p-3 rounded-lg border">
+                  <div className="flex gap-3 items-center">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                     <span className="font-medium">Query Generator</span>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                  <Badge className="text-green-800 bg-green-100">Active</Badge>
                 </div>
-                
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+
+                <div className="flex justify-between items-center p-3 rounded-lg border">
+                  <div className="flex gap-3 items-center">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                     <span className="font-medium">Validator Agent</span>
                   </div>
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
+                  <Badge className="text-green-800 bg-green-100">Active</Badge>
                 </div>
               </div>
             </CardContent>
@@ -501,5 +577,5 @@ export function AIPipelineInterface() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

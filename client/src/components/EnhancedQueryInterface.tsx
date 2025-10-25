@@ -33,11 +33,11 @@ interface QueryResult {
   confidence: number
   explanation: string
   businessLogic: string
-  tablesUsed: string[]
-  joinTypes: string[]
+  tablesUsed?: string[]
+  joinTypes?: string[]
   complexity: 'simple' | 'medium' | 'complex'
   validationStatus: 'valid' | 'warning' | 'error'
-  validationErrors: string[]
+  validationErrors?: string[]
   warnings?: string[]
 }
 
@@ -368,7 +368,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
                   <code>{queryResult.sql}</code>
                 </pre>
 
-                {queryResult.validationErrors.length > 0 && (
+                {queryResult.validationErrors && queryResult.validationErrors.length > 0 && (
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
@@ -397,7 +397,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
                   <div>
                     <h4 className="font-medium mb-2">Tables Used</h4>
                     <div className="space-y-1">
-                      {queryResult.tablesUsed.map((table, index) => (
+                      {(queryResult.tablesUsed || []).map((table, index) => (
                         <Badge key={index} variant="outline">{table}</Badge>
                       ))}
                     </div>
@@ -406,7 +406,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
                   <div>
                     <h4 className="font-medium mb-2">Join Types</h4>
                     <div className="space-y-1">
-                      {queryResult.joinTypes.map((join, index) => (
+                      {(queryResult.joinTypes || []).map((join, index) => (
                         <Badge key={index} variant="secondary">{join}</Badge>
                       ))}
                     </div>
