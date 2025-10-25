@@ -1,21 +1,34 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Spinner } from '@/components/ui/spinner'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { 
-  MessageSquare, 
-  Play, 
-  CheckCircle, 
-  AlertTriangle, 
-  Clock, 
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  MessageSquare,
+  Play,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
   Database,
   Code,
   History,
@@ -23,212 +36,237 @@ import {
   Brain,
   Send,
   Copy,
-  Download
-} from 'lucide-react'
-import { type QueryParameters } from './AppSidebar'
-import { formatSQLSimple } from '@/lib/sqlFormatter'
+  Download,
+} from "lucide-react";
+import { type QueryParameters } from "./AppSidebar";
+import { formatSQLSimple } from "@/lib/sqlFormatter";
 
 // Types
 interface QueryResult {
-  sql: string
-  confidence: number
-  explanation: string
-  businessLogic: string
-  tablesUsed?: string[]
-  joinTypes?: string[]
-  complexity: 'simple' | 'medium' | 'complex'
-  validationStatus: 'valid' | 'warning' | 'error'
-  validationErrors?: string[]
-  warnings?: string[]
+  sql: string;
+  confidence: number;
+  explanation: string;
+  businessLogic: string;
+  tablesUsed?: string[];
+  joinTypes?: string[];
+  complexity: "simple" | "medium" | "complex";
+  validationStatus: "valid" | "warning" | "error";
+  validationErrors?: string[];
+  warnings?: string[];
 }
 
 interface ExecutionResult {
-  results: any[]
-  executionTime: number
-  rowCount: number
+  results: any[];
+  executionTime: number;
+  rowCount: number;
 }
 
 interface QueryHistory {
-  id: string
-  prompt: string
-  sql: string
-  confidence: number
-  complexity: string
-  validationStatus: string
-  createdAt: string
+  id: string;
+  prompt: string;
+  sql: string;
+  confidence: number;
+  complexity: string;
+  validationStatus: string;
+  createdAt: string;
 }
 
 interface QueryTemplate {
-  id: string
-  name: string
-  description: string
-  prompt: string
-  category: string
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  category: string;
 }
 
 interface EnhancedQueryInterfaceProps {
-  parameters?: QueryParameters
+  parameters?: QueryParameters;
 }
 
-export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfaceProps) {
-  const [prompt, setPrompt] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isExecuting, setIsExecuting] = useState(false)
-  const [queryResult, setQueryResult] = useState<QueryResult | null>(null)
-  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [history, setHistory] = useState<QueryHistory[]>([])
-  const [templates, setTemplates] = useState<QueryTemplate[]>([])
+export function EnhancedQueryInterface({
+  parameters,
+}: EnhancedQueryInterfaceProps) {
+  const [prompt, setPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
+  const [executionResult, setExecutionResult] =
+    useState<ExecutionResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<QueryHistory[]>([]);
+  const [templates, setTemplates] = useState<QueryTemplate[]>([]);
 
   // Sample templates
   useEffect(() => {
     setTemplates([
       {
-        id: '1',
-        name: 'Sales Orders by Customer',
-        description: 'Get sales orders for a specific customer',
-        prompt: 'Show me all sales orders for customer 500000 with material details',
-        category: 'Sales'
+        id: "1",
+        name: "Sales Orders by Customer",
+        description: "Get sales orders for a specific customer",
+        prompt:
+          "Show me all sales orders for customer 500000 with material details",
+        category: "Sales",
       },
       {
-        id: '2',
-        name: 'Material Inventory',
-        description: 'Check material inventory levels',
-        prompt: 'Show me current inventory levels for all materials',
-        category: 'Inventory'
+        id: "2",
+        name: "Material Inventory",
+        description: "Check material inventory levels",
+        prompt: "Show me current inventory levels for all materials",
+        category: "Inventory",
       },
       {
-        id: '3',
-        name: 'Customer Analysis',
-        description: 'Analyze customer purchase patterns',
-        prompt: 'Show me top 10 customers by total purchase amount',
-        category: 'Analytics'
-      }
-    ])
-  }, [])
+        id: "3",
+        name: "Customer Analysis",
+        description: "Analyze customer purchase patterns",
+        prompt: "Show me top 10 customers by total purchase amount",
+        category: "Analytics",
+      },
+    ]);
+  }, []);
 
   const loadHistory = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/sap-query/history')
+      const response = await fetch(
+        "http://localhost:3001/api/sap-query/history"
+      );
       if (response.ok) {
-        const data = await response.json()
-        setHistory(data.data || [])
+        const data = await response.json();
+        setHistory(data.data || []);
       }
     } catch (err) {
-      console.error('Failed to load history:', err)
+      console.error("Failed to load history:", err);
     }
-  }
+  };
 
   const generateQueryWithAI = async () => {
-    if (!prompt.trim()) return
+    if (!prompt.trim()) return;
 
-    setIsGenerating(true)
-    setError(null)
-    setQueryResult(null)
-    setExecutionResult(null)
+    setIsGenerating(true);
+    setError(null);
+    setQueryResult(null);
+    setExecutionResult(null);
 
     try {
-      const response = await fetch('http://localhost:3001/api/ai-pipeline/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          prompt,
-          context: {
-            businessDomain: parameters?.businessDomain || 'sales',
-            preferredComplexity: parameters?.preferredComplexity || 'medium',
-            includeExplanation: parameters?.includeExplanation ?? true,
-            maxTables: parameters?.maxTables || 5,
-            outputFormat: parameters?.outputFormat || 'both'
+      const response = await fetch(
+        "http://localhost:3001/api/ai-pipeline/query",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          metadata: {
-            useGroundTruth: parameters?.useGroundTruth ?? true,
-            useSchemaSummary: parameters?.useSchemaSummary ?? true,
-            useTableRelationships: parameters?.useTableRelationships ?? true,
-            useColumnMetadata: parameters?.useColumnMetadata ?? true
-          }
-        }),
-      })
+          body: JSON.stringify({
+            prompt,
+            context: {
+              businessDomain: parameters?.businessDomain || "sales",
+              preferredComplexity: parameters?.preferredComplexity || "medium",
+              includeExplanation: parameters?.includeExplanation ?? true,
+              maxTables: parameters?.maxTables || 5,
+              outputFormat: parameters?.outputFormat || "both",
+            },
+            metadata: {
+              useGroundTruth: parameters?.useGroundTruth ?? true,
+              useSchemaSummary: parameters?.useSchemaSummary ?? true,
+              useTableRelationships: parameters?.useTableRelationships ?? true,
+              useColumnMetadata: parameters?.useColumnMetadata ?? true,
+            },
+          }),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json()
-      setQueryResult(data.result.query)
-      loadHistory() // Refresh history
+      const data = await response.json();
+      setQueryResult(data.result.query);
+      loadHistory(); // Refresh history
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate query with AI pipeline')
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to generate query with AI pipeline"
+      );
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
   const executeQuery = async () => {
-    if (!queryResult?.sql) return
+    if (!queryResult?.sql) return;
 
-    setIsExecuting(true)
-    setError(null)
+    setIsExecuting(true);
+    setError(null);
 
     try {
-      const response = await fetch('http://localhost:3001/api/sap-query/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sql: queryResult.sql }),
-      })
+      const response = await fetch(
+        "http://localhost:3001/api/sap-query/execute",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ sql: queryResult.sql }),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json()
-      setExecutionResult(data.result)
+      const data = await response.json();
+      setExecutionResult(data.result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to execute query')
+      setError(err instanceof Error ? err.message : "Failed to execute query");
     } finally {
-      setIsExecuting(false)
+      setIsExecuting(false);
     }
-  }
+  };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-  }
+    navigator.clipboard.writeText(text);
+  };
 
   const formatConfidence = (confidence: number) => {
-    const percentage = Math.round(confidence * 100)
-    const variant = percentage >= 80 ? 'default' : percentage >= 60 ? 'secondary' : 'destructive'
-    return <Badge variant={variant}>{percentage}%</Badge>
-  }
+    const percentage = Math.round(confidence * 100);
+    const variant =
+      percentage >= 80
+        ? "default"
+        : percentage >= 60
+        ? "secondary"
+        : "destructive";
+    return <Badge variant={variant}>{percentage}%</Badge>;
+  };
 
   const getValidationIcon = (status: string) => {
     switch (status) {
-      case 'valid':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-      case 'error':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />
+      case "valid":
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "warning":
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+      case "error":
+        return <AlertTriangle className="w-4 h-4 text-red-500" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />
+        return <Clock className="w-4 h-4 text-gray-500" />;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Query Interface</h1>
-        <p className="text-gray-600">Generate SQL queries using natural language with AI assistance</p>
+        <h1 className="mb-2 text-3xl font-bold text-gray-900">
+          Query Interface
+        </h1>
+        <p className="text-gray-600">
+          Generate SQL queries using natural language with AI assistance
+        </p>
       </div>
 
       {/* Quick Templates */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5" />
+          <CardTitle className="flex gap-2 items-center">
+            <Lightbulb className="w-5 h-5" />
             Quick Templates
           </CardTitle>
           <CardDescription>
@@ -236,16 +274,26 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {templates.map((template) => (
-              <Card key={template.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setPrompt(template.prompt)}>
+              <Card
+                key={template.id}
+                className="transition-shadow cursor-pointer hover:shadow-md"
+                onClick={() => setPrompt(template.prompt)}
+              >
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium">{template.name}</h4>
-                    <Badge variant="outline" className="text-xs">{template.category}</Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {template.category}
+                    </Badge>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">{template.description}</p>
-                  <p className="text-xs text-gray-500 italic">"{template.prompt}"</p>
+                  <p className="mb-2 text-sm text-gray-600">
+                    {template.description}
+                  </p>
+                  <p className="text-xs italic text-gray-500">
+                    "{template.prompt}"
+                  </p>
                 </CardContent>
               </Card>
             ))}
@@ -256,8 +304,8 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
       {/* Query Input */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
+          <CardTitle className="flex gap-2 items-center">
+            <MessageSquare className="w-5 h-5" />
             Natural Language Query
           </CardTitle>
           <CardDescription>
@@ -276,40 +324,40 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
               className="resize-none"
             />
           </div>
-          
+
           <div className="flex gap-2">
-            <Button 
-              onClick={generateQueryWithAI} 
+            <Button
+              onClick={generateQueryWithAI}
               disabled={isGenerating || !prompt.trim()}
               className="flex-1"
             >
               {isGenerating ? (
                 <>
-                  <Spinner className="mr-2 h-4 w-4" />
+                  <Spinner className="mr-2 w-4 h-4" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Brain className="mr-2 h-4 w-4" />
+                  <Brain className="mr-2 w-4 h-4" />
                   Generate SQL
                 </>
               )}
             </Button>
-            
+
             {queryResult && (
-              <Button 
-                onClick={executeQuery} 
+              <Button
+                onClick={executeQuery}
                 disabled={isExecuting}
                 variant="outline"
               >
                 {isExecuting ? (
                   <>
-                    <Spinner className="mr-2 h-4 w-4" />
+                    <Spinner className="mr-2 w-4 h-4" />
                     Executing...
                   </>
                 ) : (
                   <>
-                    <Play className="mr-2 h-4 w-4" />
+                    <Play className="mr-2 w-4 h-4" />
                     Execute
                   </>
                 )}
@@ -319,7 +367,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
 
           {error && (
             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="w-4 h-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -330,8 +378,8 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
       {queryResult && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Code className="h-5 w-5" />
+            <CardTitle className="flex gap-2 items-center">
+              <Code className="w-5 h-5" />
               Generated Query
             </CardTitle>
             <CardDescription>
@@ -339,7 +387,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="sql" className="space-y-4">
+            <Tabs defaultValue="sql" className="space-y-4 text-left">
               <TabsList>
                 <TabsTrigger value="sql">SQL Query</TabsTrigger>
                 <TabsTrigger value="explanation">Explanation</TabsTrigger>
@@ -348,7 +396,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
 
               <TabsContent value="sql" className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
+                  <div className="flex gap-2 items-center">
                     {getValidationIcon(queryResult.validationStatus)}
                     <span className="text-sm font-medium">
                       Status: {queryResult.validationStatus}
@@ -358,70 +406,89 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => copyToClipboard(formatSQLSimple(queryResult.sql))}
+                    onClick={() =>
+                      copyToClipboard(formatSQLSimple(queryResult.sql))
+                    }
                   >
-                    <Copy className="mr-2 h-4 w-4" />
+                    <Copy className="mr-2 w-4 h-4" />
                     Copy
                   </Button>
                 </div>
-                
-                <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">
+
+                <pre className="overflow-x-auto p-4 text-sm bg-gray-50 rounded-lg">
                   <code>{formatSQLSimple(queryResult.sql)}</code>
                 </pre>
 
-                {queryResult.validationErrors && queryResult.validationErrors.length > 0 && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <div className="space-y-1">
-                        {queryResult.validationErrors.map((error, index) => (
-                          <div key={index}>• {error}</div>
-                        ))}
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {queryResult.validationErrors &&
+                  queryResult.validationErrors.length > 0 && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="w-4 h-4" />
+                      <AlertDescription>
+                        <div className="space-y-1">
+                          {queryResult.validationErrors.map((error, index) => (
+                            <div key={index}>• {error}</div>
+                          ))}
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
               </TabsContent>
 
               <TabsContent value="explanation" className="space-y-4">
-                <div className="prose max-w-none">
-                  <h4 className="text-lg font-medium mb-2">Query Explanation</h4>
-                  <p className="text-gray-700 mb-4">{queryResult.explanation}</p>
-                  
-                  <h4 className="text-lg font-medium mb-2">Business Logic</h4>
+                <div className="max-w-none prose">
+                  <h4 className="mb-2 text-lg font-medium">
+                    Query Explanation
+                  </h4>
+                  <p className="mb-4 text-gray-700">
+                    {queryResult.explanation}
+                  </p>
+
+                  <h4 className="mb-2 text-lg font-medium">Business Logic</h4>
                   <p className="text-gray-700">{queryResult.businessLogic}</p>
                 </div>
               </TabsContent>
 
               <TabsContent value="analysis" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <h4 className="font-medium mb-2">Tables Used</h4>
+                    <h4 className="mb-2 font-medium">Tables Used</h4>
                     <div className="space-y-1">
                       {(queryResult.tablesUsed || []).map((table, index) => (
-                        <Badge key={index} variant="outline">{table}</Badge>
+                        <Badge key={index} variant="outline">
+                          {table}
+                        </Badge>
                       ))}
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h4 className="font-medium mb-2">Join Types</h4>
+                    <h4 className="mb-2 font-medium">Join Types</h4>
                     <div className="space-y-1">
                       {(queryResult.joinTypes || []).map((join, index) => (
-                        <Badge key={index} variant="secondary">{join}</Badge>
+                        <Badge key={index} variant="secondary">
+                          {join}
+                        </Badge>
                       ))}
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h4 className="font-medium mb-2">Complexity</h4>
-                    <Badge variant={queryResult.complexity === 'simple' ? 'default' : queryResult.complexity === 'medium' ? 'secondary' : 'destructive'}>
+                    <h4 className="mb-2 font-medium">Complexity</h4>
+                    <Badge
+                      variant={
+                        queryResult.complexity === "simple"
+                          ? "default"
+                          : queryResult.complexity === "medium"
+                          ? "secondary"
+                          : "destructive"
+                      }
+                    >
                       {queryResult.complexity}
                     </Badge>
                   </div>
-                  
+
                   <div>
-                    <h4 className="font-medium mb-2">Confidence Score</h4>
+                    <h4 className="mb-2 font-medium">Confidence Score</h4>
                     {formatConfidence(queryResult.confidence)}
                   </div>
                 </div>
@@ -435,12 +502,13 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
       {executionResult && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
+            <CardTitle className="flex gap-2 items-center">
+              <Database className="w-5 h-5" />
               Query Results
             </CardTitle>
             <CardDescription>
-              {executionResult.rowCount} rows returned in {executionResult.executionTime}ms
+              {executionResult.rowCount} rows returned in{" "}
+              {executionResult.executionTime}ms
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -459,7 +527,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
                       <TableRow key={index}>
                         {Object.values(row).map((value, cellIndex) => (
                           <TableCell key={cellIndex}>
-                            {value !== null ? String(value) : 'NULL'}
+                            {value !== null ? String(value) : "NULL"}
                           </TableCell>
                         ))}
                       </TableRow>
@@ -467,7 +535,7 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
                   </TableBody>
                 </Table>
                 {executionResult.results.length > 10 && (
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="mt-2 text-sm text-gray-500">
                     Showing first 10 of {executionResult.rowCount} rows
                   </p>
                 )}
@@ -479,5 +547,5 @@ export function EnhancedQueryInterface({ parameters }: EnhancedQueryInterfacePro
         </Card>
       )}
     </div>
-  )
+  );
 }
