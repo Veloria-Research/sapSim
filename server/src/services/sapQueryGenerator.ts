@@ -9,6 +9,7 @@ export interface SAPQueryRequest {
   includeExplanation?: boolean;
   preferredJoinType?: 'inner' | 'left' | 'right' | 'full';
   businessContext?: string;
+  autoSave?: boolean; // Controls whether to automatically save the query to database
 }
 
 export interface SAPQueryResult {
@@ -194,10 +195,12 @@ export class SAPQueryGenerator {
         validationResult: validationResult || undefined
       };
       
-      // Step 6: Save the generated query
-      const queryId = await this.saveGeneratedSAPQuery(request.prompt, result);
-      if (queryId) {
-        result.queryId = queryId;
+      // Step 6: Save the generated query (only if autoSave is enabled)
+      if (request.autoSave !== false) { // Default to true for backward compatibility
+        const queryId = await this.saveGeneratedSAPQuery(request.prompt, result);
+        if (queryId) {
+          result.queryId = queryId;
+        }
       }
       
       return result;
@@ -559,6 +562,23 @@ Return the response in this exact JSON format:
 
   private async saveGeneratedSAPQuery(prompt: string, result: SAPQueryResult): Promise<string | null> {
     try {
+      // Check for duplicate queries within the last 5 minutes to prevent accidental duplicates
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const existingQuery = await this.prisma.generatedQuery.findFirst({
+        where: {
+          prompt: prompt,
+          sql: result.sql,
+          createdAt: {
+            gte: fiveMinutesAgo
+          }
+        }
+      });
+
+      if (existingQuery) {
+        console.log(`Skipping duplicate query save for prompt: "${prompt}"`);
+        return existingQuery.id;
+      }
+
       const savedQuery = await this.prisma.generatedQuery.create({
         data: {
           prompt,

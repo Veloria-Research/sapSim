@@ -138,7 +138,8 @@ export class AIPipelineOrchestrator {
         prompt: request.prompt,
         maxTables: request.context?.maxTables || 5,
         includeExplanation: request.context?.includeExplanation ?? true,
-        businessContext: this.buildBusinessContext(enrichedContext, metadataContext)
+        businessContext: this.buildBusinessContext(enrichedContext, metadataContext),
+        autoSave: false // Disable auto-save to prevent duplication - AI pipeline handles saving manually
       };
 
       const queryResult = await this.sapQueryGenerator.generateSAPQuery(enhancedRequest);

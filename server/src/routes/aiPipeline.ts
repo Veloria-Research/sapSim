@@ -141,22 +141,38 @@ router.post("/query", async (req: Request, res: Response) => {
     console.log(`Processing AI pipeline query: "${prompt}"`);
     const result = await aiPipeline.processQuery(pipelineRequest);
 
-    // Save the generated query to database for tracking
+    // Save the generated query to database for tracking (with deduplication check)
     if (result.query.sql) {
-      await prisma.generatedQuery.create({
-        data: {
-          prompt,
+      // Check for duplicate queries within the last 5 minutes to prevent accidental duplicates
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const existingQuery = await prisma.generatedQuery.findFirst({
+        where: {
+          prompt: prompt,
           sql: result.query.sql,
-          explanation: result.query.explanation,
-          businessLogic: result.query.businessLogic,
-          confidence: result.pipeline.confidence,
-          tablesUsed: result.query.tablesUsed,
-          joinTypes: result.query.joinTypes || [],
-          complexity: result.query.complexity,
-          validationStatus: result.query.validationStatus,
-          validationErrors: result.query.validationErrors || []
+          createdAt: {
+            gte: fiveMinutesAgo
+          }
         }
       });
+
+      if (!existingQuery) {
+        await prisma.generatedQuery.create({
+          data: {
+            prompt,
+            sql: result.query.sql,
+            explanation: result.query.explanation,
+            businessLogic: result.query.businessLogic,
+            confidence: result.pipeline.confidence,
+            tablesUsed: result.query.tablesUsed,
+            joinTypes: result.query.joinTypes || [],
+            complexity: result.query.complexity,
+            validationStatus: result.query.validationStatus,
+            validationErrors: result.query.validationErrors || []
+          }
+        });
+      } else {
+        console.log(`Skipping duplicate query save for prompt: "${prompt}"`);
+      }
     }
 
     res.json({
