@@ -120,7 +120,7 @@ export function AIPipelineInterface() {
     })
 
     try {
-      const response = await fetch('http://localhost:3001/api/ai/pipeline', {
+      const response = await fetch('http://localhost:3001/api/ai/process-all', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -364,7 +364,7 @@ export function AIPipelineInterface() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Total Queries</p>
-                        <p className="text-2xl font-bold">{analytics.overview.totalQueries}</p>
+                        <p className="text-2xl font-bold">{analytics.overview?.totalQueries || 0}</p>
                       </div>
                       <Database className="h-8 w-8 text-blue-600" />
                     </div>
@@ -376,7 +376,7 @@ export function AIPipelineInterface() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Valid Queries</p>
-                        <p className="text-2xl font-bold">{analytics.overview.validQueries}</p>
+                        <p className="text-2xl font-bold">{analytics.overview?.validQueries || 0}</p>
                       </div>
                       <CheckCircle className="h-8 w-8 text-green-600" />
                     </div>
@@ -388,7 +388,7 @@ export function AIPipelineInterface() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Avg Confidence</p>
-                        <p className="text-2xl font-bold">{analytics.overview.averageConfidence.toFixed(1)}%</p>
+                        <p className="text-2xl font-bold">{(analytics.overview?.averageConfidence || 0).toFixed(1)}%</p>
                       </div>
                       <BarChart3 className="h-8 w-8 text-purple-600" />
                     </div>
@@ -400,7 +400,7 @@ export function AIPipelineInterface() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Validation Rate</p>
-                        <p className="text-2xl font-bold">{analytics.overview.validationRate.toFixed(1)}%</p>
+                        <p className="text-2xl font-bold">{(analytics.overview?.validationRate || 0).toFixed(1)}%</p>
                       </div>
                       <CheckCircle className="h-8 w-8 text-orange-600" />
                     </div>
@@ -416,27 +416,34 @@ export function AIPipelineInterface() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {analytics.recentQueries.map((query, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium truncate">{query.prompt}</p>
-                          <p className="text-sm text-gray-500">
-                            {new Date(query.createdAt).toLocaleDateString()}
-                          </p>
+                    {analytics.recentQueries && analytics.recentQueries.length > 0 ? (
+                      analytics.recentQueries.map((query, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <p className="font-medium truncate">{query.prompt}</p>
+                            <p className="text-sm text-gray-500">
+                              {new Date(query.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{query.complexity}</Badge>
+                            <Badge className={
+                              query.validationStatus === 'valid' ? 'bg-green-100 text-green-800' : 
+                              query.validationStatus === 'warning' ? 'bg-yellow-100 text-yellow-800' : 
+                              'bg-red-100 text-red-800'
+                            }>
+                              {query.validationStatus}
+                            </Badge>
+                            <span className="text-sm font-medium">{query.confidence.toFixed(1)}%</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{query.complexity}</Badge>
-                          <Badge className={
-                            query.validationStatus === 'valid' ? 'bg-green-100 text-green-800' : 
-                            query.validationStatus === 'warning' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-red-100 text-red-800'
-                          }>
-                            {query.validationStatus}
-                          </Badge>
-                          <span className="text-sm font-medium">{query.confidence.toFixed(1)}%</span>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No recent queries found</p>
+                        <p className="text-sm">Run the AI pipeline to generate some queries</p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </CardContent>
               </Card>

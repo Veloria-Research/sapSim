@@ -381,11 +381,8 @@ router.get("/analytics", async (req: Request, res: Response) => {
           validationRate: totalQueries > 0 ? (validQueries / totalQueries) * 100 : 0,
           averageConfidence: averageConfidence._avg.confidence || 0
         },
-        complexity: complexityDistribution.reduce((acc, item) => {
-          acc[item.complexity] = item._count.complexity;
-          return acc;
-        }, {} as Record<string, number>),
-        recentActivity: recentQueries,
+        complexityDistribution: complexityDistribution,
+        recentQueries: recentQueries,
         popularTables: topTables
       },
       message: "Analytics retrieved successfully"
