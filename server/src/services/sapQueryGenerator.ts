@@ -448,7 +448,7 @@ export class SAPQueryGenerator {
     sapModules: string[];
   }> {
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -539,16 +539,18 @@ export class SAPQueryGenerator {
     if (
       prompt.toLowerCase().includes("customer") &&
       (prompt.toLowerCase().includes("purchase") ||
-       prompt.toLowerCase().includes("amount") ||
-       prompt.toLowerCase().includes("total") ||
-       prompt.toLowerCase().includes("revenue") ||
-       prompt.toLowerCase().includes("value"))
+        prompt.toLowerCase().includes("amount") ||
+        prompt.toLowerCase().includes("total") ||
+        prompt.toLowerCase().includes("revenue") ||
+        prompt.toLowerCase().includes("value"))
     ) {
       // For customer purchase analysis, we need sales data (VBAK/VBAP)
       const vbak = this.sapTableDefinitions.get("VBAK");
       const vbap = this.sapTableDefinitions.get("VBAP");
-      if (vbak && !relevantTables.some(t => t.name === "VBAK")) relevantTables.push(vbak);
-      if (vbap && !relevantTables.some(t => t.name === "VBAP")) relevantTables.push(vbap);
+      if (vbak && !relevantTables.some((t) => t.name === "VBAK"))
+        relevantTables.push(vbak);
+      if (vbap && !relevantTables.some((t) => t.name === "VBAP"))
+        relevantTables.push(vbap);
     }
 
     // Define standard SAP relationships
@@ -702,7 +704,7 @@ Return the response in this exact JSON format (and nothing else):
 }`;
 
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -919,20 +921,34 @@ Return the response in this exact JSON format (and nothing else):
     // Check for non-existent tables in the SQL
     const sqlUpper = sql.toUpperCase();
     const validTables = Object.keys(this.tableNameMapping);
-    const invalidTables = ["VBRK", "VBRP", "BKPF", "BSEG", "EKKO", "EKPO", "LIKP", "LIPS"];
-    
-    invalidTables.forEach(table => {
+    const invalidTables = [
+      "VBRK",
+      "VBRP",
+      "BKPF",
+      "BSEG",
+      "EKKO",
+      "EKPO",
+      "LIKP",
+      "LIPS",
+    ];
+
+    invalidTables.forEach((table) => {
       if (sqlUpper.includes(table)) {
         errors.push(`Invalid tables detected: ${table}`);
       }
     });
 
     // Extract table names from SQL to validate they exist
-    const tableMatches = sql.match(/FROM\s+["`]?(\w+)["`]?|JOIN\s+["`]?(\w+)["`]?/gi);
+    const tableMatches = sql.match(
+      /FROM\s+["`]?(\w+)["`]?|JOIN\s+["`]?(\w+)["`]?/gi
+    );
     if (tableMatches) {
-      tableMatches.forEach(match => {
-        const tableName = match.replace(/FROM\s+|JOIN\s+|["`]/gi, '').trim().toUpperCase();
-        if (!validTables.includes(tableName) && tableName !== '') {
+      tableMatches.forEach((match) => {
+        const tableName = match
+          .replace(/FROM\s+|JOIN\s+|["`]/gi, "")
+          .trim()
+          .toUpperCase();
+        if (!validTables.includes(tableName) && tableName !== "") {
           errors.push(`Invalid tables detected: ${tableName}`);
         }
       });
@@ -942,11 +958,15 @@ Return the response in this exact JSON format (and nothing else):
     const lowercaseTableMatches = sql.match(/["`]([a-z]+)["`]/g);
     if (lowercaseTableMatches) {
       const lowercaseTables = lowercaseTableMatches
-        .map(match => match.replace(/["`]/g, ''))
-        .filter(table => validTables.map(t => t.toLowerCase()).includes(table));
-      
+        .map((match) => match.replace(/["`]/g, ""))
+        .filter((table) =>
+          validTables.map((t) => t.toLowerCase()).includes(table)
+        );
+
       if (lowercaseTables.length > 0) {
-        errors.push(`Invalid joins detected: ${lowercaseTables.map(t => t.toUpperCase()).join(', ')} = ${lowercaseTables.map(t => t.toUpperCase()).join(', ')}`);
+        errors.push(
+          `Invalid joins detected: ${lowercaseTables.map((t) => t.toUpperCase()).join(", ")} = ${lowercaseTables.map((t) => t.toUpperCase()).join(", ")}`
+        );
       }
     }
 

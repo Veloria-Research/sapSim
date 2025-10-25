@@ -20,13 +20,15 @@ export class SchemaSummarizerAgent {
     });
   }
 
-  async generateSchemaSummary(tableStructure: TableStructure): Promise<SchemaSummary> {
+  async generateSchemaSummary(
+    tableStructure: TableStructure
+  ): Promise<SchemaSummary> {
     // Generate semantic summary using OpenAI
     const summary = await this.generateSemanticSummary(tableStructure);
-    
+
     // Generate embedding for the summary
     const embedding = await this.generateEmbedding(summary);
-    
+
     // Extract business context and relationships
     const businessContext = this.extractBusinessContext(tableStructure);
     const keyFields = this.extractKeyFields(tableStructure);
@@ -38,16 +40,18 @@ export class SchemaSummarizerAgent {
       embedding,
       businessContext,
       keyFields,
-      relationships
+      relationships,
     };
   }
 
-  private async generateSemanticSummary(tableStructure: TableStructure): Promise<string> {
+  private async generateSemanticSummary(
+    tableStructure: TableStructure
+  ): Promise<string> {
     const prompt = `
 Analyze this SAP table structure and provide a comprehensive semantic summary:
 
 Table: ${tableStructure.tableName}
-Fields: ${tableStructure.fields.map(f => `${f.name} (${f.type}${f.nullable ? ', nullable' : ''}${f.isPrimaryKey ? ', primary key' : ''}${f.isForeignKey ? `, foreign key to ${f.referencedTable}.${f.referencedField}` : ''})`).join(', ')}
+Fields: ${tableStructure.fields.map((f) => `${f.name} (${f.type}${f.nullable ? ", nullable" : ""}${f.isPrimaryKey ? ", primary key" : ""}${f.isForeignKey ? `, foreign key to ${f.referencedTable}.${f.referencedField}` : ""})`).join(", ")}
 
 Sample Data:
 ${JSON.stringify(tableStructure.sampleData.slice(0, 3), null, 2)}
@@ -65,19 +69,20 @@ Keep the summary concise but comprehensive, focusing on business meaning rather 
 `;
 
     const response = await this.openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
-          content: "You are an expert SAP business analyst. Provide clear, business-focused summaries of SAP table structures."
+          content:
+            "You are an expert SAP business analyst. Provide clear, business-focused summaries of SAP table structures.",
         },
         {
           role: "user",
-          content: prompt
-        }
+          content: prompt,
+        },
       ],
       max_tokens: 500,
-      temperature: 0.3
+      temperature: 0.3,
     });
 
     return response.choices[0]?.message?.content || "No summary generated";
@@ -94,30 +99,39 @@ Keep the summary concise but comprehensive, focusing on business meaning rather 
 
   private extractBusinessContext(tableStructure: TableStructure): string {
     const contextMap: Record<string, string> = {
-      'MARA': 'Material Master - Core product/material information for inventory and sales',
-      'KNA1': 'Customer Master - Customer demographic and contact information',
-      'VBAK': 'Sales Document Header - Sales order header information and customer assignments',
-      'VBAP': 'Sales Document Items - Individual line items within sales orders'
+      MARA: "Material Master - Core product/material information for inventory and sales",
+      KNA1: "Customer Master - Customer demographic and contact information",
+      VBAK: "Sales Document Header - Sales order header information and customer assignments",
+      VBAP: "Sales Document Items - Individual line items within sales orders",
     };
 
-    return contextMap[tableStructure.tableName] || 'Unknown business context';
+    return contextMap[tableStructure.tableName] || "Unknown business context";
   }
 
   private extractKeyFields(tableStructure: TableStructure): string[] {
     return tableStructure.fields
-      .filter(field => field.isPrimaryKey || field.isForeignKey || field.name.includes('DATE') || field.name.includes('NUM'))
-      .map(field => field.name);
+      .filter(
+        (field) =>
+          field.isPrimaryKey ||
+          field.isForeignKey ||
+          field.name.includes("DATE") ||
+          field.name.includes("NUM")
+      )
+      .map((field) => field.name);
   }
 
   private extractRelationships(tableStructure: TableStructure): string[] {
     return tableStructure.fields
-      .filter(field => field.isForeignKey)
-      .map(field => `${field.name} -> ${field.referencedTable}.${field.referencedField}`);
+      .filter((field) => field.isForeignKey)
+      .map(
+        (field) =>
+          `${field.name} -> ${field.referencedTable}.${field.referencedField}`
+      );
   }
 
   async saveSchemaSummary(schemaSummary: SchemaSummary): Promise<void> {
     // Convert embedding array to the format expected by pgvector
-    const embeddingString = `[${schemaSummary.embedding.join(',')}]`;
+    const embeddingString = `[${schemaSummary.embedding.join(",")}]`;
 
     await this.prisma.$executeRaw`
       INSERT INTO "SchemaSummary" (id, "table", summary, embedding, "createdAt", "updatedAt")
@@ -136,20 +150,27 @@ Keep the summary concise but comprehensive, focusing on business meaning rather 
     `;
   }
 
-  async findSimilarSchemas(queryText: string, limit: number = 5): Promise<Array<{
-    tableName: string;
-    summary: string;
-    similarity: number;
-  }>> {
-    // Generate embedding for the query
-    const queryEmbedding = await this.generateEmbedding(queryText);
-    const embeddingString = `[${queryEmbedding.join(',')}]`;
-
-    const results = await this.prisma.$queryRaw<Array<{
-      table: string;
+  async findSimilarSchemas(
+    queryText: string,
+    limit: number = 5
+  ): Promise<
+    Array<{
+      tableName: string;
       summary: string;
       similarity: number;
-    }>>`
+    }>
+  > {
+    // Generate embedding for the query
+    const queryEmbedding = await this.generateEmbedding(queryText);
+    const embeddingString = `[${queryEmbedding.join(",")}]`;
+
+    const results = await this.prisma.$queryRaw<
+      Array<{
+        table: string;
+        summary: string;
+        similarity: number;
+      }>
+    >`
       SELECT 
         "table",
         summary,
@@ -159,25 +180,29 @@ Keep the summary concise but comprehensive, focusing on business meaning rather 
       LIMIT ${limit}
     `;
 
-    return results.map(result => ({
+    return results.map((result) => ({
       tableName: result.table,
       summary: result.summary,
-      similarity: result.similarity
+      similarity: result.similarity,
     }));
   }
 
-  async processAllTables(tableStructures: TableStructure[]): Promise<SchemaSummary[]> {
+  async processAllTables(
+    tableStructures: TableStructure[]
+  ): Promise<SchemaSummary[]> {
     const summaries: SchemaSummary[] = [];
 
     for (const tableStructure of tableStructures) {
-      console.log(`Processing schema summary for table: ${tableStructure.tableName}`);
-      
+      console.log(
+        `Processing schema summary for table: ${tableStructure.tableName}`
+      );
+
       const summary = await this.generateSchemaSummary(tableStructure);
       await this.saveSchemaSummary(summary);
       summaries.push(summary);
-      
+
       // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     return summaries;

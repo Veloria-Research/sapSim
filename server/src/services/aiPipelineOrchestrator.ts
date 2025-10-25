@@ -1,6 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import OpenAI from "openai";
-import { SAPQueryGenerator, SAPQueryRequest, SAPQueryResult } from "./sapQueryGenerator.js";
+import {
+  SAPQueryGenerator,
+  SAPQueryRequest,
+  SAPQueryResult,
+} from "./sapQueryGenerator.js";
 import { RelationshipInference } from "./relationshipInference.js";
 import { ColumnAnalyzer } from "./columnAnalyzer.js";
 import { SchemaSummarizerAgent } from "./schemaSummarizer.js";
@@ -10,10 +14,10 @@ export interface PipelineRequest {
   prompt: string;
   context?: {
     businessDomain?: string;
-    preferredComplexity?: 'simple' | 'medium' | 'complex';
+    preferredComplexity?: "simple" | "medium" | "complex";
     includeExplanation?: boolean;
     maxTables?: number;
-    outputFormat?: 'sql' | 'explanation' | 'both';
+    outputFormat?: "sql" | "explanation" | "both";
   };
   metadata?: {
     useGroundTruth?: boolean;
@@ -88,7 +92,7 @@ export class AIPipelineOrchestrator {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
-    
+
     // Initialize all AI services
     this.sapQueryGenerator = new SAPQueryGenerator(prisma);
     this.relationshipInference = new RelationshipInference(prisma);
@@ -138,11 +142,15 @@ export class AIPipelineOrchestrator {
         prompt: request.prompt,
         maxTables: request.context?.maxTables || 5,
         includeExplanation: request.context?.includeExplanation ?? true,
-        businessContext: this.buildBusinessContext(enrichedContext, metadataContext),
-        autoSave: false // Disable auto-save to prevent duplication - AI pipeline handles saving manually
+        businessContext: this.buildBusinessContext(
+          enrichedContext,
+          metadataContext
+        ),
+        autoSave: false, // Disable auto-save to prevent duplication - AI pipeline handles saving manually
       };
 
-      const queryResult = await this.sapQueryGenerator.generateSAPQuery(enhancedRequest);
+      const queryResult =
+        await this.sapQueryGenerator.generateSAPQuery(enhancedRequest);
 
       // Stage 6: Query Optimization and Validation
       stagesExecuted.push("optimization_validation");
@@ -171,18 +179,22 @@ export class AIPipelineOrchestrator {
             groundTruth: metadataContext.groundTruth,
             schemaSummaries: metadataContext.schemaSummaries,
             tableRelationships: metadataContext.tableRelationships,
-            columnMetadata: metadataContext.columnMetadata
+            columnMetadata: metadataContext.columnMetadata,
           },
           aiAnalysis,
-          confidence: this.calculateOverallConfidence(optimizedQuery.query, aiAnalysis),
-          processingTime
+          confidence: this.calculateOverallConfidence(
+            optimizedQuery.query,
+            aiAnalysis
+          ),
+          processingTime,
         },
-        recommendations
+        recommendations,
       };
-
     } catch (error) {
       console.error("Pipeline processing error:", error);
-      throw new Error(`AI Pipeline failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `AI Pipeline failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     }
   }
 
@@ -192,11 +204,11 @@ export class AIPipelineOrchestrator {
     entities: string[];
     operations: string[];
     relevantTables: string[];
-    complexity: 'simple' | 'medium' | 'complex';
+    complexity: "simple" | "medium" | "complex";
     confidence: number;
   }> {
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -208,46 +220,46 @@ export class AIPipelineOrchestrator {
           5. Relevant SAP tables (VBAK, VBAP, MARA, KNA1, etc.)
           6. Query complexity level
           
-          Respond in JSON format with high confidence scores.`
+          Respond in JSON format with high confidence scores.`,
         },
         {
           role: "user",
-          content: `Analyze this query: "${prompt}"`
-        }
+          content: `Analyze this query: "${prompt}"`,
+        },
       ],
-      temperature: 0.1
+      temperature: 0.1,
     });
 
     try {
-      return JSON.parse(completion.choices[0].message.content || '{}');
+      return JSON.parse(completion.choices[0].message.content || "{}");
     } catch {
       return {
-        queryType: 'general',
-        businessDomain: 'unknown',
+        queryType: "general",
+        businessDomain: "unknown",
         entities: [],
-        operations: ['select'],
-        relevantTables: ['VBAK', 'VBAP', 'MARA', 'KNA1'],
-        complexity: 'medium' as const,
-        confidence: 0.5
+        operations: ["select"],
+        relevantTables: ["VBAK", "VBAP", "MARA", "KNA1"],
+        complexity: "medium" as const,
+        confidence: 0.5,
       };
     }
   }
 
   private async collectMetadataContext(
     relevantTables: string[] = [],
-    metadataOptions?: PipelineRequest['metadata']
+    metadataOptions?: PipelineRequest["metadata"]
   ): Promise<MetadataContext> {
     const context: MetadataContext = {
       groundTruth: null,
       schemaSummaries: [],
       tableRelationships: [],
-      columnMetadata: []
+      columnMetadata: [],
     };
 
     // Collect Ground Truth if requested
     if (metadataOptions?.useGroundTruth !== false) {
       const latestGroundTruth = await this.prisma.groundTruth.findFirst({
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       });
       context.groundTruth = latestGroundTruth;
     }
@@ -255,44 +267,53 @@ export class AIPipelineOrchestrator {
     // Collect Schema Summaries
     if (metadataOptions?.useSchemaSummary !== false) {
       context.schemaSummaries = await this.prisma.schemaSummary.findMany({
-        where: relevantTables.length > 0 ? {
-          table: { in: relevantTables }
-        } : undefined,
+        where:
+          relevantTables.length > 0
+            ? {
+                table: { in: relevantTables },
+              }
+            : undefined,
         select: {
           table: true,
-          summary: true
-        }
+          summary: true,
+        },
       });
     }
 
     // Collect Table Relationships
     if (metadataOptions?.useTableRelationships !== false) {
       const relationships = await this.prisma.tableRelationship.findMany({
-        where: relevantTables.length > 0 ? {
-          OR: [
-            { leftTable: { in: relevantTables } },
-            { rightTable: { in: relevantTables } }
-          ]
-        } : undefined
+        where:
+          relevantTables.length > 0
+            ? {
+                OR: [
+                  { leftTable: { in: relevantTables } },
+                  { rightTable: { in: relevantTables } },
+                ],
+              }
+            : undefined,
       });
-      
-      context.tableRelationships = relationships.map(r => ({
+
+      context.tableRelationships = relationships.map((r) => ({
         leftTable: r.leftTable,
         leftColumn: r.leftColumn,
         rightTable: r.rightTable,
         rightColumn: r.rightColumn,
         relationshipType: r.relationshipType,
         confidence: r.confidence,
-        businessRule: r.businessRule || undefined
+        businessRule: r.businessRule || undefined,
       }));
     }
 
     // Collect Column Metadata
     if (metadataOptions?.useColumnMetadata !== false) {
       const columns = await this.prisma.columnMetadata.findMany({
-        where: relevantTables.length > 0 ? {
-          tableName: { in: relevantTables }
-        } : undefined,
+        where:
+          relevantTables.length > 0
+            ? {
+                tableName: { in: relevantTables },
+              }
+            : undefined,
         select: {
           tableName: true,
           columnName: true,
@@ -300,18 +321,20 @@ export class AIPipelineOrchestrator {
           businessContext: true,
           description: true,
           sampleValues: true,
-          possibleJoinKeys: true
-        }
+          possibleJoinKeys: true,
+        },
       });
-      
-      context.columnMetadata = columns.map(c => ({
+
+      context.columnMetadata = columns.map((c) => ({
         tableName: c.tableName,
         columnName: c.columnName,
         semanticType: c.semanticType || undefined,
         businessContext: c.businessContext || undefined,
         description: c.description || undefined,
         sampleValues: Array.isArray(c.sampleValues) ? c.sampleValues : [],
-        possibleJoinKeys: Array.isArray(c.possibleJoinKeys) ? c.possibleJoinKeys : []
+        possibleJoinKeys: Array.isArray(c.possibleJoinKeys)
+          ? c.possibleJoinKeys
+          : [],
       }));
     }
 
@@ -329,9 +352,9 @@ export class AIPipelineOrchestrator {
     optimizationHints: string[];
   }> {
     const contextSummary = this.buildContextSummary(metadataContext);
-    
+
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
@@ -341,7 +364,7 @@ export class AIPipelineOrchestrator {
           3. Business logic interpretation
           4. Query optimization hints
           
-          Consider the schema summaries, table relationships, and column metadata provided.`
+          Consider the schema summaries, table relationships, and column metadata provided.`,
         },
         {
           role: "user",
@@ -350,20 +373,20 @@ export class AIPipelineOrchestrator {
           Intent Analysis: ${JSON.stringify(intentAnalysis)}
           Metadata Context: ${contextSummary}
           
-          Provide enriched context in JSON format.`
-        }
+          Provide enriched context in JSON format.`,
+        },
       ],
-      temperature: 0.2
+      temperature: 0.2,
     });
 
     try {
-      return JSON.parse(completion.choices[0].message.content || '{}');
+      return JSON.parse(completion.choices[0].message.content || "{}");
     } catch {
       return {
         suggestedTables: intentAnalysis.relevantTables || [],
         recommendedJoins: [],
-        businessLogic: 'Standard SAP business logic applies',
-        optimizationHints: []
+        businessLogic: "Standard SAP business logic applies",
+        optimizationHints: [],
       };
     }
   }
@@ -377,52 +400,62 @@ export class AIPipelineOrchestrator {
     alternativePaths: any[];
   }> {
     // Use existing relationship inference service
-    const relationships = await this.relationshipInference.getRelationshipsForTables(suggestedTables);
-    
+    const relationships =
+      await this.relationshipInference.getRelationshipsForTables(
+        suggestedTables
+      );
+
     // AI-enhanced relationship mapping
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
-          content: "You are an expert in SAP table relationships. Analyze the provided relationships and suggest optimal join paths."
+          content:
+            "You are an expert in SAP table relationships. Analyze the provided relationships and suggest optimal join paths.",
         },
         {
           role: "user",
           content: `
-          Tables: ${suggestedTables.join(', ')}
+          Tables: ${suggestedTables.join(", ")}
           Available Relationships: ${JSON.stringify(relationships)}
           Column Metadata: ${JSON.stringify(metadataContext.columnMetadata)}
           
-          Suggest optimal join paths in JSON format.`
-        }
+          Suggest optimal join paths in JSON format.`,
+        },
       ],
-      temperature: 0.1
+      temperature: 0.1,
     });
 
     try {
-      return JSON.parse(completion.choices[0].message.content || '{}');
+      return JSON.parse(completion.choices[0].message.content || "{}");
     } catch {
       return {
-        joinPaths: relationships.map(r => ({
+        joinPaths: relationships.map((r) => ({
           from: `${r.leftTable}.${r.leftColumn}`,
           to: `${r.rightTable}.${r.rightColumn}`,
-          type: r.joinType || 'inner'
+          type: r.joinType || "inner",
         })),
         relationshipConfidence: 0.8,
-        alternativePaths: []
+        alternativePaths: [],
       };
     }
   }
 
-  private buildBusinessContext(enrichedContext: any, metadataContext: MetadataContext): string {
+  private buildBusinessContext(
+    enrichedContext: any,
+    metadataContext: MetadataContext
+  ): string {
     const schemaSummaries = metadataContext.schemaSummaries
-      .map(s => `${s.table}: ${s.summary}`)
-      .join('\n');
-    
+      .map((s) => `${s.table}: ${s.summary}`)
+      .join("\n");
+
     const relationships = metadataContext.tableRelationships
-      .map(r => `${r.leftTable}.${r.leftColumn} -> ${r.rightTable}.${r.rightColumn} (${r.relationshipType})`)
-      .join('\n');
+      .map(
+        (r) =>
+          `${r.leftTable}.${r.leftColumn} -> ${r.rightTable}.${r.rightColumn} (${r.relationshipType})`
+      )
+      .join("\n");
 
     return `
 Business Context:
@@ -435,7 +468,7 @@ Key Relationships:
 ${relationships}
 
 Optimization Hints:
-${enrichedContext.optimizationHints?.join('\n') || 'None'}
+${enrichedContext.optimizationHints?.join("\n") || "None"}
     `.trim();
   }
 
@@ -449,15 +482,19 @@ ${enrichedContext.optimizationHints?.join('\n') || 'None'}
   }> {
     // Validate using existing validator
     const groundTruth = metadataContext.groundTruth?.graph || null;
-    const validationResult = await this.validator.validateQuery(queryResult.sql, groundTruth);
-    
+    const validationResult = await this.validator.validateQuery(
+      queryResult.sql,
+      groundTruth
+    );
+
     // AI-powered optimization
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
-          content: "You are an expert SQL optimizer for SAP systems. Analyze and suggest optimizations for the provided query."
+          content:
+            "You are an expert SQL optimizer for SAP systems. Analyze and suggest optimizations for the provided query.",
         },
         {
           role: "user",
@@ -466,29 +503,33 @@ ${enrichedContext.optimizationHints?.join('\n') || 'None'}
           Validation Result: ${JSON.stringify(validationResult)}
           Available Relationships: ${JSON.stringify(relationshipMapping)}
           
-          Suggest optimizations in JSON format.`
-        }
+          Suggest optimizations in JSON format.`,
+        },
       ],
-      temperature: 0.1
+      temperature: 0.1,
     });
 
     let optimizationDetails = {};
     try {
-      optimizationDetails = JSON.parse(completion.choices[0].message.content || '{}');
+      optimizationDetails = JSON.parse(
+        completion.choices[0].message.content || "{}"
+      );
     } catch {
       optimizationDetails = { suggestions: [], confidence: 0.5 };
     }
 
     // Apply optimizations if validation passed
-    const optimizedQuery = validationResult.isValid ? queryResult : {
-      ...queryResult,
-      validationStatus: 'invalid' as const,
-      validationErrors: validationResult.errors
-    };
+    const optimizedQuery = validationResult.isValid
+      ? queryResult
+      : {
+          ...queryResult,
+          validationStatus: "invalid" as const,
+          validationErrors: validationResult.errors,
+        };
 
     return {
       query: optimizedQuery,
-      optimizationDetails
+      optimizationDetails,
     };
   }
 
@@ -502,11 +543,12 @@ ${enrichedContext.optimizationHints?.join('\n') || 'None'}
     dataQualityInsights?: string[];
   }> {
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
-          content: "Generate helpful recommendations for the user based on their query and the generated SQL."
+          content:
+            "Generate helpful recommendations for the user based on their query and the generated SQL.",
         },
         {
           role: "user",
@@ -515,19 +557,19 @@ ${enrichedContext.optimizationHints?.join('\n') || 'None'}
           Generated Query: ${queryResult.sql}
           Metadata Available: ${JSON.stringify(metadataContext.schemaSummaries)}
           
-          Provide recommendations in JSON format.`
-        }
+          Provide recommendations in JSON format.`,
+        },
       ],
-      temperature: 0.3
+      temperature: 0.3,
     });
 
     try {
-      return JSON.parse(completion.choices[0].message.content || '{}');
+      return JSON.parse(completion.choices[0].message.content || "{}");
     } catch {
       return {
         alternativeQueries: [],
         optimizationSuggestions: [],
-        dataQualityInsights: []
+        dataQualityInsights: [],
       };
     }
   }
@@ -537,18 +579,21 @@ ${enrichedContext.optimizationHints?.join('\n') || 'None'}
 Schema Summaries: ${metadataContext.schemaSummaries.length} tables
 Table Relationships: ${metadataContext.tableRelationships.length} relationships  
 Column Metadata: ${metadataContext.columnMetadata.length} columns analyzed
-Ground Truth: ${metadataContext.groundTruth ? 'Available' : 'Not available'}
+Ground Truth: ${metadataContext.groundTruth ? "Available" : "Not available"}
     `.trim();
   }
 
-  private calculateOverallConfidence(queryResult: SAPQueryResult, aiAnalysis: any): number {
+  private calculateOverallConfidence(
+    queryResult: SAPQueryResult,
+    aiAnalysis: any
+  ): number {
     const factors = [
       queryResult.confidence,
       aiAnalysis.intentAnalysis?.confidence || 0.5,
       aiAnalysis.relationshipMapping?.relationshipConfidence || 0.5,
-      queryResult.validationStatus === 'valid' ? 1.0 : 0.3
+      queryResult.validationStatus === "valid" ? 1.0 : 0.3,
     ];
-    
+
     return factors.reduce((sum, factor) => sum + factor, 0) / factors.length;
   }
 
@@ -561,26 +606,33 @@ Ground Truth: ${metadataContext.groundTruth ? 'Available' : 'Not available'}
   }> {
     try {
       console.log("Initializing AI Pipeline...");
-      
+
       // Extract and analyze all data
-      const extractorService = new (await import("./extractor.js")).ExtractorService(this.prisma);
+      const extractorService = new (
+        await import("./extractor.js")
+      ).ExtractorService(this.prisma);
       const extractedData = await extractorService.extractAllTables();
-      
+
       // Process schema summaries
-      const summaries = await this.schemaSummarizer.processAllTables(extractedData.tables);
-      
+      const summaries = await this.schemaSummarizer.processAllTables(
+        extractedData.tables
+      );
+
       // Analyze columns
-      const columnAnalyses = await this.columnAnalyzer.analyzeAllColumns(extractedData.tables);
+      const columnAnalyses = await this.columnAnalyzer.analyzeAllColumns(
+        extractedData.tables
+      );
       await this.columnAnalyzer.saveColumnAnalyses(columnAnalyses);
-      
+
       // Infer relationships
-      const relationships = await this.relationshipInference.inferAllRelationships();
-      
+      const relationships =
+        await this.relationshipInference.inferAllRelationships();
+
       return {
         tablesAnalyzed: extractedData.tables.length,
         relationshipsInferred: relationships.length,
         schemasProcessed: summaries.length,
-        status: "Pipeline initialized successfully"
+        status: "Pipeline initialized successfully",
       };
     } catch (error) {
       console.error("Pipeline initialization error:", error);
