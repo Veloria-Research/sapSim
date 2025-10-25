@@ -169,6 +169,8 @@ model GeneratedQuery {
   id              String   @id @default(cuid())
   prompt          String
   sql             String
+  explanation     String?  // AI-generated explanation of the query
+  businessLogic   String?  // Business logic explanation
   confidence      Float
   executionTime   Float?   // Query execution time in ms
   resultCount     Int?     // Number of rows returned

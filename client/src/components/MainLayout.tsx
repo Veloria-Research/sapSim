@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AppSidebar, type QueryParameters } from './AppSidebar'
 import { EnhancedQueryInterface } from './EnhancedQueryInterface'
+import { AIPipelineInterface } from './AIPipelineInterface'
 
 const defaultParameters: QueryParameters = {
   businessDomain: 'sales',
@@ -24,12 +25,7 @@ export function MainLayout() {
       case 'query':
         return <EnhancedQueryInterface parameters={parameters} />
       case 'pipeline':
-        return (
-          <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">AI Pipeline</h1>
-            <p className="text-gray-600">AI Pipeline view coming soon...</p>
-          </div>
-        )
+        return <AIPipelineInterface />
       case 'history':
         return (
           <div className="p-6">

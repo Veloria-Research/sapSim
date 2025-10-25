@@ -147,6 +147,8 @@ router.post("/query", async (req: Request, res: Response) => {
         data: {
           prompt,
           sql: result.query.sql,
+          explanation: result.query.explanation,
+          businessLogic: result.query.businessLogic,
           confidence: result.pipeline.confidence,
           tablesUsed: result.query.tablesUsed,
           joinTypes: result.query.joinTypes || [],
