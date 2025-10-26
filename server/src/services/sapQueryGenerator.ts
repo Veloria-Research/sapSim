@@ -356,6 +356,25 @@ export class SAPQueryGenerator {
         request
       );
 
+      // Step 3.5: Validate SQL constraints to prevent problematic patterns
+      const constraintValidation = this.validateSQLConstraints(sqlResult.sql);
+      if (!constraintValidation.isValid) {
+        console.warn(
+          "Generated SQL contains forbidden patterns, using fallback"
+        );
+        const fallbackResult = this.generateFallbackSAPQuery(
+          request.prompt,
+          relevantContext
+        );
+        sqlResult.sql = fallbackResult.sql;
+        sqlResult.confidence = Math.min(sqlResult.confidence, 0.6); // Reduce confidence for fallback
+        sqlResult.explanation = fallbackResult.explanation;
+        sqlResult.businessLogic = fallbackResult.businessLogic;
+      } else if (constraintValidation.warnings.length > 0) {
+        console.warn("SQL validation warnings:", constraintValidation.warnings);
+        sqlResult.confidence = Math.min(sqlResult.confidence, 0.8); // Slightly reduce confidence for warnings
+      }
+
       // Step 4: Validate against SAP business rules (legacy validation)
       const validation = await this.validateSAPQuery(
         sqlResult.sql,
@@ -615,7 +634,7 @@ export class SAPQueryGenerator {
     explanation: string;
     businessLogic: string;
   }> {
-    const systemPrompt = `You are an expert SAP consultant and SQL developer specializing in complex analytical queries. Generate optimized SQL queries for SAP systems.
+    const systemPrompt = `You are an expert SAP consultant and SQL developer specializing in reliable SQL queries. Generate optimized SQL queries for SAP systems.
 
 CRITICAL REQUIREMENTS:
 1. ONLY use tables from this EXACT list (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
@@ -651,50 +670,49 @@ ${context.relationships
   )
   .join("\n")}
 
-For complex analytical queries, use these advanced SQL techniques:
-- CTEs (WITH clauses) for multi-step calculations and better readability
-- Window functions (ROW_NUMBER, RANK, SUM() OVER, etc.) for analytical calculations
-- CASE statements for conditional logic and categorization
-- Subqueries for complex filtering and calculations
-- Proper aggregations (SUM, COUNT, AVG) with GROUP BY
-- Date/time functions for temporal analysis
-- String functions for text analysis and pattern matching
-- Mathematical functions for ratio and score calculations
+SQL CONSTRAINTS - ONLY USE THESE BASIC FEATURES:
+- Simple SELECT statements with column selection
+- Basic JOINs (INNER, LEFT, RIGHT) - NO complex joins
+- Simple WHERE clauses with AND, OR, IN, LIKE operators
+- Basic aggregations: COUNT(*), SUM(), AVG(), MIN(), MAX()
+- Simple GROUP BY and ORDER BY clauses
+- Basic CASE statements for simple conditional logic
+- Standard comparison operators (=, <>, <, >, <=, >=)
+- Simple date comparisons using standard formats ('YYYY-MM-DD')
+
+FORBIDDEN SQL FEATURES - DO NOT USE:
+- CTEs (WITH clauses)
+- Window functions (ROW_NUMBER, RANK, PARTITION BY, etc.)
+- Subqueries (except simple EXISTS checks)
+- Advanced PostgreSQL functions (MODE, FILTER, etc.)
+- Complex date functions beyond basic comparison
+- UNION, INTERSECT, EXCEPT operations
+- Recursive queries
+- Advanced string functions beyond basic LIKE
 
 CRITICAL JSON FORMATTING:
 - You MUST return ONLY a valid JSON object
 - Do NOT include markdown code blocks, backticks, or any other formatting
 - Do NOT include any text before or after the JSON
 - Ensure all strings are properly escaped
-- For complex SQL, break long queries into readable lines within the JSON string using \\n
+- Use \\n for line breaks in SQL strings
 
 EXAMPLE SQL STRUCTURE:
-SELECT "VBAK"."VBELN"  AS Sales_Document_Number,
-       "VBAK"."AUART"  AS Sales_Document_Type,
-       "VBAK"."ERDAT"  AS Created_On,
-       "VBAP"."MATNR"  AS Material_Number,
-       "VBAP"."KWMENG" AS Order_Quantity,
-       "MARA"."MTART"  AS Material_Type,
-       "MARA"."MATKL"  AS Material_Group,
-       "KNA1"."NAME1"  AS Customer_Name
-FROM   "VBAK"
-       INNER JOIN "VBAP"
-               ON "VBAK"."VBELN" = "VBAP"."VBELN"
-       INNER JOIN "MARA"
-               ON "VBAP"."MATNR" = "MARA"."MATNR"
-       INNER JOIN "KNA1"
-               ON "VBAK"."KUNNR" = "KNA1"."KUNNR"
-WHERE  "VBAK"."KUNNR" = '500000' 
+SELECT "VBAK"."VBELN" AS Sales_Document_Number,\\n       "VBAK"."AUART" AS Sales_Document_Type,\\n       "VBAK"."ERDAT" AS Created_On,\\n       "VBAP"."MATNR" AS Material_Number,\\n       "VBAP"."KWMENG" AS Order_Quantity,\\n       "MARA"."MTART" AS Material_Type,\\n       "KNA1"."NAME1" AS Customer_Name\\nFROM "VBAK"\\n     INNER JOIN "VBAP" ON "VBAK"."VBELN" = "VBAP"."VBELN"\\n     INNER JOIN "MARA" ON "VBAP"."MATNR" = "MARA"."MATNR"\\n     INNER JOIN "KNA1" ON "VBAK"."KUNNR" = "KNA1"."KUNNR"\\nWHERE "VBAK"."KUNNR" = '500000'
+
+EXAMPLE SQL STRUCTURE (WITH AGGREGATION):
+SELECT "KNA1"."REGIO" AS Customer_Region,\\n       COUNT(*) AS Total_Orders,\\n       SUM("VBAP"."KWMENG") AS Total_Quantity\\nFROM "VBAK"\\n     INNER JOIN "VBAP" ON "VBAK"."VBELN" = "VBAP"."VBELN"\\n     INNER JOIN "KNA1" ON "VBAK"."KUNNR" = "KNA1"."KUNNR"\\nGROUP BY "KNA1"."REGIO"\\nORDER BY Total_Quantity DESC
 
 SAP Query Best Practices:
-1. Use meaningful column aliases that reflect business terminology
-2. Include proper JOIN conditions based on SAP relationships
-3. Consider performance with appropriate WHERE clauses
-4. Use SAP naming conventions
-5. Include business-relevant filters
+1. Keep queries readable
+2. Use meaningful column aliases that reflect business terminology
+3. Include proper JOIN conditions based on SAP relationships
+4. Use appropriate WHERE clauses for filtering
+5. Prefer simple aggregations over complex calculations
+6. Use standard SQL that works across different databases
 
 Generate a SQL query that follows SAP best practices and includes:
-1. The SQL query
+1. The SQL query (using ONLY SQL features)
 2. Confidence score (0.0-1.0)
 3. Technical explanation
 4. Business logic explanation
@@ -713,22 +731,23 @@ STRICT CONSTRAINTS:
 - ONLY use these tables: ${context.tables.map((t) => t.name).join(", ")}
 - DO NOT use any other SAP tables (VBRK, VBRP, etc.) - they do not exist
 - If the requirement cannot be met with available tables, explain the limitation clearly
+- Use ONLY SQL features - NO advanced features like CTEs, window functions, or subqueries
 
 Query Generation Guidelines:
 1. Use ONLY the EXACT table names provided (case-sensitive): ${context.tables.map((t) => t.name).join(", ")}
 2. Include meaningful column aliases using underscores (e.g., Total_Order_Value, Customer_Name)
 3. Implement proper JOIN conditions based on SAP relationships
 4. Follow SAP business logic and conventions
-5. Use proper PostgreSQL syntax with advanced features
+5. Use reliable PostgreSQL syntax with features
 
-For Complex Analytical Requirements:
-- Break down multi-dimensional analysis into logical CTEs
-- Use window functions for ranking, running totals, and comparative analysis
-- Implement proper date filtering and time-series analysis
-- Calculate business metrics using appropriate aggregations
-- Use CASE statements for categorization and conditional logic
-- Apply string functions for pattern matching and text analysis
-- Create calculated fields for ratios, scores, and derived metrics
+For Business Requirements:
+- Use SELECT statements with basic JOINs
+- Apply basic aggregations (COUNT, SUM, AVG, MIN, MAX) with GROUP BY
+- Implement  WHERE clauses for filtering
+- Use basic CASE statements for conditional logic
+- Apply standard date comparisons using 'YYYY-MM-DD' format
+- Keep queries readable and maintainable
+- Avoid complex calculations - use  arithmetic only
 
 CRITICAL JSON FORMATTING RULES:
 - Return ONLY a valid JSON object
@@ -740,10 +759,10 @@ CRITICAL JSON FORMATTING RULES:
 
 Return the response in this exact JSON format (and nothing else):
 {
-  "sql": "WITH analysis_cte AS (\\n  SELECT ...\\n  FROM ...\\n  WHERE ...\\n)\\nSELECT ... FROM analysis_cte",
+  "sql": "SELECT columns\\nFROM table1\\n     INNER JOIN table2 ON condition\\nWHERE filter_condition",
   "confidence": 0.95,
-  "explanation": "Technical explanation covering CTEs, joins, window functions, and analytical approach",
-  "businessLogic": "Business logic explanation covering metrics, calculations, and analytical insights provided"
+  "explanation": "Technical explanation covering joins, aggregations, and filtering approach",
+  "businessLogic": "Business logic explanation covering the data retrieved and business insights provided"
 }`;
 
     // Determine appropriate token limit based on prompt complexity
@@ -927,9 +946,18 @@ Return the response in this exact JSON format (and nothing else):
   private assessPromptComplexity(
     prompt: string
   ): "simple" | "medium" | "complex" | "extreme" {
+    // Simplified complexity assessment that favors basic SQL generation
     const complexityIndicators = {
-      simple: ["show", "get", "find", "list"],
-      medium: ["join", "group by", "order by", "count", "sum", "average"],
+      simple: ["show", "get", "find", "list", "display", "retrieve", "select"],
+      medium: [
+        "join",
+        "group",
+        "count",
+        "sum",
+        "average",
+        "total",
+        "aggregate",
+      ],
       complex: [
         "analysis",
         "report",
@@ -937,6 +965,8 @@ Return the response in this exact JSON format (and nothing else):
         "correlation",
         "pattern",
         "trend",
+        "ranking",
+        "comparison",
       ],
       extreme: [
         "multi-dimensional",
@@ -946,13 +976,15 @@ Return the response in this exact JSON format (and nothing else):
         "seasonal",
         "complexity score",
         "confidence interval",
+        "advanced analytics",
+        "statistical",
       ],
     };
 
     const lowerPrompt = prompt.toLowerCase();
     let score = 0;
 
-    // Count indicators for each complexity level
+    // Count indicators for each complexity level with reduced weights
     Object.entries(complexityIndicators).forEach(([level, indicators]) => {
       const matches = indicators.filter((indicator) =>
         lowerPrompt.includes(indicator)
@@ -962,20 +994,20 @@ Return the response in this exact JSON format (and nothing else):
           score += matches * 1;
           break;
         case "medium":
-          score += matches * 2;
+          score += matches * 1.5; // Reduced from 2
           break;
         case "complex":
-          score += matches * 3;
+          score += matches * 2; // Reduced from 3
           break;
         case "extreme":
-          score += matches * 5;
+          score += matches * 3; // Reduced from 5
           break;
       }
     });
 
-    // Additional complexity factors
+    // Reduced additional complexity factors
     const wordCount = prompt.split(/\s+/).length;
-    const hasMultipleConditions = (prompt.match(/\band\b/gi) || []).length > 3;
+    const hasMultipleConditions = (prompt.match(/\band\b/gi) || []).length > 5; // Increased threshold
     const hasCalculations = /calculate|ratio|score|metric|percentage/i.test(
       prompt
     );
@@ -983,14 +1015,15 @@ Return the response in this exact JSON format (and nothing else):
       prompt
     );
 
-    if (wordCount > 200) score += 3;
-    if (hasMultipleConditions) score += 2;
-    if (hasCalculations) score += 2;
-    if (hasTimeAnalysis) score += 2;
+    if (wordCount > 300) score += 2; // Increased threshold and reduced penalty
+    if (hasMultipleConditions) score += 1; // Reduced penalty
+    if (hasCalculations) score += 1; // Reduced penalty
+    if (hasTimeAnalysis) score += 1; // Reduced penalty
 
-    if (score >= 15) return "extreme";
-    if (score >= 10) return "complex";
-    if (score >= 5) return "medium";
+    // Increased thresholds to favor simpler queries
+    if (score >= 20) return "extreme"; // Increased from 15
+    if (score >= 15) return "complex"; // Increased from 10
+    if (score >= 8) return "medium"; // Increased from 5
     return "simple";
   }
 
@@ -1132,6 +1165,90 @@ Return the response in this exact JSON format (and nothing else):
       confidence: 0.6,
       explanation: "Generated fallback query with basic table joins.",
       businessLogic: "Basic multi-table query to retrieve related SAP data.",
+    };
+  }
+
+  private validateSQLConstraints(sql: string): {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+  } {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const sqlLower = sql.toLowerCase();
+
+    // Check for forbidden SQL features
+    const forbiddenPatterns = [
+      {
+        pattern: /\bwith\s+\w+\s+as\s*\(/i,
+        message: "CTEs (WITH clauses) are not allowed",
+      },
+      {
+        pattern: /\brow_number\s*\(/i,
+        message: "Window function ROW_NUMBER() is not allowed",
+      },
+      {
+        pattern: /\brank\s*\(/i,
+        message: "Window function RANK() is not allowed",
+      },
+      {
+        pattern: /\bpartition\s+by\b/i,
+        message: "PARTITION BY (window functions) is not allowed",
+      },
+      {
+        pattern: /\bover\s*\(/i,
+        message: "Window functions with OVER clause are not allowed",
+      },
+      { pattern: /\bmode\s*\(/i, message: "MODE() function is not supported" },
+      { pattern: /\bfilter\s*\(/i, message: "FILTER clause is not supported" },
+      { pattern: /\bunion\b/i, message: "UNION operations are not allowed" },
+      {
+        pattern: /\bintersect\b/i,
+        message: "INTERSECT operations are not allowed",
+      },
+      { pattern: /\bexcept\b/i, message: "EXCEPT operations are not allowed" },
+      {
+        pattern: /\brecursive\b/i,
+        message: "Recursive queries are not allowed",
+      },
+      {
+        pattern: /\bselect\s+.*\bfrom\s*\(\s*select/i,
+        message: "Complex subqueries are not allowed",
+      },
+    ];
+
+    forbiddenPatterns.forEach(({ pattern, message }) => {
+      if (pattern.test(sql)) {
+        errors.push(message);
+      }
+    });
+
+    // Check for potentially problematic patterns (warnings)
+    const warningPatterns = [
+      {
+        pattern: /\bexists\s*\(/i,
+        message: "EXISTS subqueries should be used sparingly",
+      },
+      {
+        pattern: /\bcase\s+when.*case\s+when/i,
+        message: "Nested CASE statements may be complex",
+      },
+      {
+        pattern: /join.*join.*join.*join/i,
+        message: "More than 3 JOINs may impact performance",
+      },
+    ];
+
+    warningPatterns.forEach(({ pattern, message }) => {
+      if (pattern.test(sql)) {
+        warnings.push(message);
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
     };
   }
 
@@ -1295,13 +1412,16 @@ Return the response in this exact JSON format (and nothing else):
 
     try {
       // Execute the query using Prisma's raw query capability
-      const results = await this.prisma.$queryRawUnsafe(sql);
+      const rawResults = await this.prisma.$queryRawUnsafe(sql);
       const executionTime = Date.now() - startTime;
 
+      // Convert BigInt values to strings to avoid JSON serialization issues
+      const results = this.convertBigIntToString(Array.isArray(rawResults) ? rawResults : [rawResults]);
+
       return {
-        results: Array.isArray(results) ? results : [results],
+        results,
         executionTime,
-        rowCount: Array.isArray(results) ? results.length : 1,
+        rowCount: results.length,
       };
     } catch (error) {
       console.error("Query execution error:", error);
@@ -1309,5 +1429,59 @@ Return the response in this exact JSON format (and nothing else):
         `Query execution failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
+  }
+
+  private convertBigIntToString(data: any): any {
+    if (data === null || data === undefined) {
+      return data;
+    }
+
+    if (typeof data === 'bigint') {
+      return data.toString();
+    }
+
+    // Handle Prisma Decimal objects (they have 's', 'e', 'd' properties)
+    if (typeof data === 'object' && data.s !== undefined && data.e !== undefined && data.d !== undefined) {
+      // This is a Prisma Decimal object, convert to string
+      try {
+        // Reconstruct the decimal value from the internal representation
+        const sign = data.s === 1 ? '' : '-';
+        const digits = data.d.join('');
+        const exponent = data.e;
+        
+        if (exponent >= 0) {
+          // Positive exponent - add zeros to the right
+          const result = digits + '0'.repeat(exponent - digits.length + 1);
+          return sign + result;
+        } else {
+          // Negative exponent - decimal point
+          const absExponent = Math.abs(exponent);
+          if (absExponent >= digits.length) {
+            return sign + '0.' + '0'.repeat(absExponent - digits.length) + digits;
+          } else {
+            const intPart = digits.slice(0, digits.length - absExponent);
+            const decPart = digits.slice(digits.length - absExponent);
+            return sign + intPart + '.' + decPart;
+          }
+        }
+      } catch (error) {
+        // Fallback: try to convert to string if available
+        return data.toString ? data.toString() : String(data);
+      }
+    }
+
+    if (Array.isArray(data)) {
+      return data.map(item => this.convertBigIntToString(item));
+    }
+
+    if (typeof data === 'object') {
+      const converted: any = {};
+      for (const [key, value] of Object.entries(data)) {
+        converted[key] = this.convertBigIntToString(value);
+      }
+      return converted;
+    }
+
+    return data;
   }
 }
