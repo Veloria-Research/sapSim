@@ -1416,7 +1416,9 @@ Return the response in this exact JSON format (and nothing else):
       const executionTime = Date.now() - startTime;
 
       // Convert BigInt values to strings to avoid JSON serialization issues
-      const results = this.convertBigIntToString(Array.isArray(rawResults) ? rawResults : [rawResults]);
+      const results = this.convertBigIntToString(
+        Array.isArray(rawResults) ? rawResults : [rawResults]
+      );
 
       return {
         results,
@@ -1436,32 +1438,39 @@ Return the response in this exact JSON format (and nothing else):
       return data;
     }
 
-    if (typeof data === 'bigint') {
+    if (typeof data === "bigint") {
       return data.toString();
     }
 
     // Handle Prisma Decimal objects (they have 's', 'e', 'd' properties)
-    if (typeof data === 'object' && data.s !== undefined && data.e !== undefined && data.d !== undefined) {
+    if (
+      typeof data === "object" &&
+      data.s !== undefined &&
+      data.e !== undefined &&
+      data.d !== undefined
+    ) {
       // This is a Prisma Decimal object, convert to string
       try {
         // Reconstruct the decimal value from the internal representation
-        const sign = data.s === 1 ? '' : '-';
-        const digits = data.d.join('');
+        const sign = data.s === 1 ? "" : "-";
+        const digits = data.d.join("");
         const exponent = data.e;
-        
+
         if (exponent >= 0) {
           // Positive exponent - add zeros to the right
-          const result = digits + '0'.repeat(exponent - digits.length + 1);
+          const result = digits + "0".repeat(exponent - digits.length + 1);
           return sign + result;
         } else {
           // Negative exponent - decimal point
           const absExponent = Math.abs(exponent);
           if (absExponent >= digits.length) {
-            return sign + '0.' + '0'.repeat(absExponent - digits.length) + digits;
+            return (
+              sign + "0." + "0".repeat(absExponent - digits.length) + digits
+            );
           } else {
             const intPart = digits.slice(0, digits.length - absExponent);
             const decPart = digits.slice(digits.length - absExponent);
-            return sign + intPart + '.' + decPart;
+            return sign + intPart + "." + decPart;
           }
         }
       } catch (error) {
@@ -1471,10 +1480,10 @@ Return the response in this exact JSON format (and nothing else):
     }
 
     if (Array.isArray(data)) {
-      return data.map(item => this.convertBigIntToString(item));
+      return data.map((item) => this.convertBigIntToString(item));
     }
 
-    if (typeof data === 'object') {
+    if (typeof data === "object") {
       const converted: any = {};
       for (const [key, value] of Object.entries(data)) {
         converted[key] = this.convertBigIntToString(value);
