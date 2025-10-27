@@ -25,6 +25,7 @@ import {
   Clock,
   Filter,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { QueryDetailModal } from "./QueryDetailModal";
 
@@ -60,6 +61,7 @@ export function QueryHistory({ className }: QueryHistoryProps) {
   const [selectedValidation, setSelectedValidation] = useState<string>("all");
   const [selectedQuery, setSelectedQuery] = useState<QueryHistory | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Load query history
   const loadQueryHistory = async () => {
@@ -130,6 +132,80 @@ export function QueryHistory({ className }: QueryHistoryProps) {
   const handleViewQuery = (query: QueryHistory) => {
     setSelectedQuery(query);
     setIsModalOpen(true);
+  };
+
+  // Handle delete single query
+  const handleDeleteQuery = async (queryId: string) => {
+    if (!confirm("Are you sure you want to delete this query?")) {
+      return;
+    }
+
+    try {
+      setDeletingId(queryId);
+      const response = await fetch(
+        `http://localhost:3001/api/query/history/${queryId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Remove the deleted query from the state
+        setQueries(queries.filter(q => q.id !== queryId));
+        setFilteredQueries(filteredQueries.filter(q => q.id !== queryId));
+      } else {
+        throw new Error(data.error || "Failed to delete query");
+      }
+    } catch (err) {
+      console.error("Failed to delete query:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to delete query"
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Handle delete all queries
+  const handleDeleteAllQueries = async () => {
+    if (!confirm("Are you sure you want to delete ALL query history? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(
+        "http://localhost:3001/api/query/history",
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Clear all queries from state
+        setQueries([]);
+        setFilteredQueries([]);
+      } else {
+        throw new Error(data.error || "Failed to delete all queries");
+      }
+    } catch (err) {
+      console.error("Failed to delete all queries:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to delete all queries"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Get badge variant for validation status
@@ -219,10 +295,23 @@ export function QueryHistory({ className }: QueryHistoryProps) {
                 {filteredQueries.length} of {queries.length} queries)
               </CardDescription>
             </div>
-            <Button onClick={loadQueryHistory} variant="outline" size="sm">
-              <RefreshCw className="mr-2 w-4 h-4" />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={loadQueryHistory} variant="outline" size="sm">
+                <RefreshCw className="mr-2 w-4 h-4" />
+                Refresh
+              </Button>
+              {queries.length > 0 && (
+                <Button 
+                  onClick={handleDeleteAllQueries} 
+                  variant="destructive" 
+                  size="sm"
+                  disabled={loading}
+                >
+                  <Trash2 className="mr-2 w-4 h-4" />
+                  Delete All
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
 
@@ -337,14 +426,25 @@ export function QueryHistory({ className }: QueryHistoryProps) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          onClick={() => handleViewQuery(query)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Eye className="mr-1 w-4 h-4" />
-                          View
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleViewQuery(query)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Eye className="mr-1 w-4 h-4" />
+                            View
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteQuery(query.id)}
+                            variant="destructive"
+                            size="sm"
+                            disabled={deletingId === query.id}
+                          >
+                            <Trash2 className="mr-1 w-4 h-4" />
+                            {deletingId === query.id ? "..." : "Delete"}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

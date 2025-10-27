@@ -415,4 +415,101 @@ router.get("/history", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/sap-query/history/{id}:
+ *   delete:
+ *     summary: Delete a specific query from history
+ *     tags: [SAP Query Processing]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the query to delete
+ *     responses:
+ *       200:
+ *         description: Query deleted successfully
+ *       404:
+ *         description: Query not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete("/history/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: "Query ID is required"
+      });
+    }
+
+    console.log(`Deleting SAP query with ID: ${id}`);
+
+    // Check if query exists
+    const existingQuery = await prisma.generatedQuery.findUnique({
+      where: { id }
+    });
+
+    if (!existingQuery) {
+      return res.status(404).json({
+        success: false,
+        error: "Query not found"
+      });
+    }
+
+    // Delete the query
+    await prisma.generatedQuery.delete({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: "Query deleted successfully"
+    });
+  } catch (error) {
+    console.error("Delete SAP query error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete query",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/sap-query/history:
+ *   delete:
+ *     summary: Delete all query history
+ *     tags: [SAP Query Processing]
+ *     responses:
+ *       200:
+ *         description: All queries deleted successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.delete("/history", async (req: Request, res: Response) => {
+  try {
+    console.log("Deleting all SAP query history");
+
+    const result = await prisma.generatedQuery.deleteMany({});
+
+    res.json({
+      success: true,
+      message: `Successfully deleted ${result.count} queries from history`
+    });
+  } catch (error) {
+    console.error("Delete all SAP queries error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete query history",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
 export default router;
