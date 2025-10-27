@@ -9,6 +9,7 @@ import aiRoutes from "./routes/ai.js";
 import queryRoutes from "./routes/query.js";
 import sapQueryRoutes from "./routes/sapQuery.js";
 import aiPipelineRoutes from "./routes/aiPipeline.js";
+import authRoutes from "./routes/auth.js";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -30,6 +31,9 @@ const swaggerSpec = swaggerJsdoc({
 });
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Authentication Routes
+app.use("/api/auth", authRoutes);
 
 // AI Routes
 app.use("/api/ai", aiRoutes);

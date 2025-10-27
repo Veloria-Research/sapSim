@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ParameterControls } from './ParameterControls'
+import { useAuth } from '../contexts/AuthContext'
 import { 
   MessageSquare, 
   Settings, 
@@ -10,7 +11,8 @@ import {
   History,
   FileText,
   BarChart3,
-  Zap
+  Zap,
+  LogOut
 } from 'lucide-react'
 
 export interface QueryParameters {
@@ -34,6 +36,8 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeView, onViewChange, parameters, onParametersChange }: AppSidebarProps) {
+  const { logout } = useAuth();
+  
   const navigationItems = [
     { id: 'query', label: 'Query Interface', icon: MessageSquare },
     { id: 'pipeline', label: 'AI Pipeline', icon: Brain },
@@ -42,6 +46,10 @@ export function AppSidebar({ activeView, onViewChange, parameters, onParametersC
     { id: 'schema', label: 'Schema Explorer', icon: Database },
     { id: 'docs', label: 'Documentation', icon: FileText },
   ]
+
+  const handleLogout = () => {
+    logout();
+  };
 
 
 
@@ -88,7 +96,16 @@ export function AppSidebar({ activeView, onViewChange, parameters, onParametersC
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 space-y-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+          onClick={handleLogout}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Logout
+        </Button>
         <div className="text-xs text-gray-500 text-center">
           SAP AI Simulation v1.0
         </div>
